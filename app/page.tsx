@@ -1,900 +1,905 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence, type Variants } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import Logo from '@/components/Logo'
 import { useTheme } from '@/components/ThemeProvider'
 
-// ─── Color tokens ──────────────────────────────────────────────────────────────
-const C = {
-  c1: '#001f3f', c2: '#003d6b', c3: '#0077b6', c4: '#00b4d8', c5: '#ffffff',
-  glass: 'rgba(0,61,107,0.38)',
-  glassB: 'rgba(0,180,216,0.14)',
-  muted: 'rgba(255,255,255,0.55)',
-  faint: 'rgba(255,255,255,0.3)',
-  grad: 'linear-gradient(135deg,#0077b6,#00b4d8)',
-  gradH: 'linear-gradient(90deg,#0077b6,#00b4d8)',
+/* ── useReveal hook ─────────────────────────────────────────────────────────── */
+function useReveal(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect() } },
+      { threshold }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [threshold])
+  return { ref, visible }
 }
 
-// ─── i18n ─────────────────────────────────────────────────────────────────────
-const content = {
-  TR: {
-    nav: { features: 'Özellikler', pricing: 'Fiyatlandırma', about: 'Hakkımızda', faq: 'SSS', contact: 'İletişim', login: 'Giriş Yap', trial: 'Ücretsiz Dene' },
-    hero: {
-      badge: '✦ Restoran & Kafe Yönetiminde Yeni Nesil',
-      title1: 'Garsonunuza Gerek', title2: 'Kalmadan Sipariş Alın',
-      subtitle: 'QR kod ile masadan sipariş, dijital sadakat kartı ve gerçek zamanlı panel. Tek platformda.',
-      cta1: '7 Gün Ücretsiz Dene →', cta2: 'Demo İzle',
-      proof: '⭐ 500+ işletme tarafından kullanılıyor',
-      n1: '🔔 Yeni Sipariş — Masa 7', n2: '✅ 23 Sipariş Bugün',
-    },
-    steps: { title: '4 Adımda Başlayın', items: [
-      { num: '01', title: 'QR Oluştur', desc: 'Masalarınız için saniyeler içinde QR kod üretin' },
-      { num: '02', title: 'Menünüzü Yükleyin', desc: 'Excel ile ya da manuel olarak menünüzü ekleyin' },
-      { num: '03', title: 'Sipariş Alın', desc: "Müşteriler QR okutarak sipariş verir, panel'e anında düşer" },
-      { num: '04', title: 'Büyüyün', desc: 'Sadakat programı ile müşterilerinizi geri getirin' },
-    ]},
-    features: { title: 'Her Şey Tek Platformda', items: [
-      { icon: '📱', title: 'QR ile Sipariş', desc: 'Müşteri uygulamasız, direkt tarayıcıdan sipariş verir' },
-      { icon: '⚡', title: 'Gerçek Zamanlı Panel', desc: 'Sipariş anında panelde görünür, gecikme sıfır' },
-      { icon: '🎁', title: 'Dijital Sadakat Kartı', desc: 'Apple & Google Wallet entegrasyonu, pul sistemi' },
-      { icon: '🔔', title: 'Garson Çağırma', desc: 'Tek tuşla garson çağrısı, masa numarası ile' },
-      { icon: '🎨', title: 'Marka Özelleştirme', desc: 'Logo, renkler, kart tasarımı tamamen size özel' },
-      { icon: '📊', title: 'Analitik & CRM', desc: 'Müşteri verileri, satış raporları, kampanya takibi' },
-    ]},
-    stats: { title: 'Rakamlar Konuşuyor', items: [
-      { value: '%40', label: 'Daha az sipariş hatası' },
-      { value: '3x', label: 'Daha hızlı sipariş alma' },
-      { value: '%68', label: 'Loyalty üye erişim oranı' },
-      { value: '7dk', label: 'Ortalama kurulum süresi' },
-    ]},
-    showcase: { title: 'Paneli Görün', tabs: ['Sipariş Paneli', 'Menü Yönetimi', 'Loyalty Paneli'] },
-    pricing: {
-      title: 'Şeffaf Fiyatlandırma',
-      subtitle: 'Kredi kartı gerekmez. 7 gün ücretsiz deneyin.',
-      monthly: 'Aylık', yearly: 'Yıllık', yearlyBadge: '%17 indirim',
-      plans: [
-        { name: 'Starter', monthly: '$89/ay', yearly: '$890/yıl', features: ['1 şube', '15 masaya kadar', 'Sipariş paneli + garson çağırma', 'Menü yönetimi', 'Loyalty (500 üye)', '7 gün ücretsiz deneme'], cta: 'Başlayın →', popular: false },
-        { name: 'Growth', monthly: '$119/ay', yearly: '$1.190/yıl', features: ['3 şube', 'Sınırsız masa', "Starter'daki her şey", 'Loyalty (5.000 üye)', 'Push bildirim + kampanya', 'Müşteri CRM + analitik'], cta: 'Başlayın →', popular: true },
-        { name: 'Pro', monthly: '$189/ay', yearly: '$1.890/yıl', features: ['Sınırsız şube', 'Sınırsız her şey', 'White-label', 'Öncelikli destek'], cta: 'İletişime Geçin', popular: false },
-      ],
-    },
-    faq: { title: 'Sık Sorulan Sorular', items: [
-      { q: 'Müşterilerin uygulama indirmesi gerekiyor mu?', a: 'Hayır. QR kodu tarayan müşteri direkt tarayıcısında menüyü görür. İndirme, kayıt, şifre yok.' },
-      { q: 'QR kodları nasıl alıyorum?', a: "Panelden masa sayınızı girin, sistem QR'ları otomatik üretir. PDF olarak indirip yazıcıdan çıktı alır, masalarınıza koyarsınız." },
-      { q: 'Menümü nasıl yüklerim?', a: 'Excel/CSV şablonumuzu indirin, doldurun, yükleyin. Ya da panel üzerinden tek tek ekleyebilirsiniz.' },
-      { q: 'Apple/Google Wallet entegrasyonu nasıl çalışıyor?', a: "Müşteri loyalty sayfanızdaki QR'ı okutup bilgilerini girer. Kart otomatik oluşturulur ve telefonuna eklenir. Siz pul bastıkça kart gerçek zamanlı güncellenir." },
-      { q: 'Birden fazla şubem var, destekliyor musunuz?', a: 'Evet. Growth planında 3, Pro planında sınırsız şube. Her şubenin kendi paneli ve QR\'ları ayrıdır.' },
-      { q: 'Ödeme sistemi var mı?', a: 'Şu an müşteri kasada ödeme yapıyor. Online ödeme yol haritamızda.' },
-      { q: 'Verilerimi kaybeder miyim? Güvenli mi?', a: 'Verileriniz Supabase altyapısında şifreli olarak saklanır. Üçüncü taraflarla paylaşılmaz.' },
-      { q: '7 günlük denemeyi nasıl başlatırım?', a: '"Ücretsiz Dene" butonuna tıklayın. Kredi kartı gerekmez.' },
-      { q: 'İndirim kodum var, nasıl kullanırım?', a: 'Kayıt sırasında "İndirim Kodu" alanına kodunuzu girin, indirim otomatik uygulanır.' },
-      { q: 'Destek alabilir miyim?', a: 'Tüm planlarda e-posta desteği. Pro planında öncelikli destek ve kurulum yardımı.' },
-    ]},
-    about: { title: 'Hakkımızda', text: 'Garsonsal, kafe ve restoranların daha az personelle daha verimli çalışması için tasarlandı. QR sipariş, dijital sadakat ve gerçek zamanlı yönetimi tek platformda sunuyoruz. Amacımız; teknoloji ile operasyonel karmaşıklığı sıfıra indirmek.' },
-    contact: { title: 'İletişime Geçin', subtitle: 'Genellikle 24 saat içinde yanıt veririz', name: 'Ad Soyad', email: 'E-posta', business: 'İşletme Adı', message: 'Mesaj', send: 'Gönder' },
-    footer: {
-      desc: 'Kafe ve restoranlar için modern sipariş ve sadakat platformu.',
-      product: 'Ürün', company: 'Şirket', legal: 'Yasal',
-      productLinks: ['Özellikler', 'Fiyatlandırma', 'Demo', 'Güncellemeler'],
-      companyLinks: ['Hakkımızda', 'İletişim', 'Kariyer'],
-      legalLinks: ['Hizmet Kesintisi & İade Politikası', 'Gizlilik Politikası', 'Kullanım Koşulları', 'Çerez Politikası'],
-      copy: '© 2025 Garsonsal. Tüm hakları saklıdır.',
-      policy: 'Garsonsal, kesintisiz hizmet sunmayı hedefler; ancak beklenmedik teknik sorunlar veya olağanüstü durumlar nedeniyle hizmetin sonlandırılması halinde, ödenen abonelik ücretleri iade edilemez niteliktedir.',
-    },
+/* ── Pricing plans ──────────────────────────────────────────────────────────── */
+const PLANS = [
+  {
+    name: 'Başlangıç', price: 89, period: '/ay',
+    desc: 'Tek şubelik işletmeler için ideal başlangıç paketi.',
+    features: ['1 şube', '10 masa & QR', 'Dijital menü', 'Temel analitik', 'E-posta desteği'],
+    cta: 'Ücretsiz Dene', highlight: false,
   },
-  EN: {
-    nav: { features: 'Features', pricing: 'Pricing', about: 'About', faq: 'FAQ', contact: 'Contact', login: 'Sign In', trial: 'Free Trial' },
-    hero: {
-      badge: '✦ Next Generation Restaurant & Cafe Management',
-      title1: 'Take Orders Without', title2: 'Needing a Waiter',
-      subtitle: 'Table ordering via QR, digital loyalty cards, and real-time dashboard. All in one platform.',
-      cta1: '7-Day Free Trial →', cta2: 'Watch Demo',
-      proof: '⭐ Used by 500+ businesses',
-      n1: '🔔 New Order — Table 7', n2: '✅ 23 Orders Today',
-    },
-    steps: { title: 'Get Started in 4 Steps', items: [
-      { num: '01', title: 'Create QR', desc: 'Generate QR codes for your tables in seconds' },
-      { num: '02', title: 'Upload Menu', desc: 'Add your menu via Excel or manually' },
-      { num: '03', title: 'Receive Orders', desc: 'Customers scan QR and order, it instantly appears in your panel' },
-      { num: '04', title: 'Grow', desc: 'Bring customers back with your loyalty program' },
-    ]},
-    features: { title: 'Everything in One Platform', items: [
-      { icon: '📱', title: 'QR Ordering', desc: 'Customers order directly from browser, no app needed' },
-      { icon: '⚡', title: 'Real-time Dashboard', desc: 'Orders appear instantly in your panel, zero latency' },
-      { icon: '🎁', title: 'Digital Loyalty Card', desc: 'Apple & Google Wallet integration, stamp system' },
-      { icon: '🔔', title: 'Waiter Call', desc: 'One-tap waiter call with table number' },
-      { icon: '🎨', title: 'Brand Customization', desc: 'Logo, colors, card design fully customized for you' },
-      { icon: '📊', title: 'Analytics & CRM', desc: 'Customer data, sales reports, campaign tracking' },
-    ]},
-    stats: { title: 'Numbers Speak', items: [
-      { value: '40%', label: 'Fewer order errors' },
-      { value: '3x', label: 'Faster order taking' },
-      { value: '68%', label: 'Loyalty member reach' },
-      { value: '7min', label: 'Average setup time' },
-    ]},
-    showcase: { title: 'See the Dashboard', tabs: ['Order Panel', 'Menu Management', 'Loyalty Panel'] },
-    pricing: {
-      title: 'Transparent Pricing', subtitle: 'No credit card required. Try free for 7 days.',
-      monthly: 'Monthly', yearly: 'Yearly', yearlyBadge: '17% off',
-      plans: [
-        { name: 'Starter', monthly: '$89/mo', yearly: '$890/yr', features: ['1 branch', 'Up to 15 tables', 'Order panel + waiter call', 'Menu management', 'Loyalty (500 members)', '7-day free trial'], cta: 'Get Started →', popular: false },
-        { name: 'Growth', monthly: '$119/mo', yearly: '$1,190/yr', features: ['3 branches', 'Unlimited tables', 'Everything in Starter', 'Loyalty (5,000 members)', 'Push notifications + campaigns', 'Customer CRM + analytics'], cta: 'Get Started →', popular: true },
-        { name: 'Pro', monthly: '$189/mo', yearly: '$1,890/yr', features: ['Unlimited branches', 'Unlimited everything', 'White-label', 'Priority support'], cta: 'Contact Us', popular: false },
-      ],
-    },
-    faq: { title: 'Frequently Asked Questions', items: [
-      { q: 'Do customers need to download an app?', a: 'No. Customers see the menu directly in their browser. No download, registration, or password.' },
-      { q: 'How do I get QR codes?', a: 'Enter your table count in the panel, the system generates QRs automatically. Download as PDF and print.' },
-      { q: 'How do I upload my menu?', a: 'Download our Excel/CSV template, fill it in, and upload. Or add items one by one through the panel.' },
-      { q: 'How does Apple/Google Wallet integration work?', a: 'The customer scans the QR on your loyalty page. The card is created and added to their phone, updating in real-time as you stamp.' },
-      { q: 'Do you support multiple branches?', a: 'Yes. Growth plan: 3 branches, Pro plan: unlimited. Each branch has its own panel and QRs.' },
-      { q: 'Is there a payment system?', a: 'Currently customers pay at the register. Online payment is on our roadmap.' },
-      { q: 'Is my data safe?', a: 'Data is stored encrypted in Supabase infrastructure. Not shared with third parties.' },
-      { q: 'How do I start the 7-day trial?', a: 'Click "Free Trial". No credit card required.' },
-      { q: 'I have a discount code, how do I use it?', a: 'Enter your code in the "Discount Code" field during registration.' },
-      { q: 'Can I get support?', a: 'Email support on all plans. Priority support + setup help on Pro.' },
-    ]},
-    about: { title: 'About Us', text: 'Garsonsal is built to help cafes and restaurants operate more efficiently with less staff. We bring QR ordering, digital loyalty, and real-time management into one platform.' },
-    contact: { title: 'Get in Touch', subtitle: 'We usually reply within 24 hours', name: 'Full Name', email: 'Email', business: 'Business Name', message: 'Message', send: 'Send' },
-    footer: {
-      desc: 'Modern ordering and loyalty platform for cafes and restaurants.',
-      product: 'Product', company: 'Company', legal: 'Legal',
-      productLinks: ['Features', 'Pricing', 'Demo', 'Updates'],
-      companyLinks: ['About', 'Contact', 'Careers'],
-      legalLinks: ['Service & Refund Policy', 'Privacy Policy', 'Terms of Service', 'Cookie Policy'],
-      copy: '© 2025 Garsonsal. All rights reserved.',
-      policy: 'Garsonsal aims to provide uninterrupted service; however, in the event of service termination due to unexpected issues, paid subscription fees are non-refundable.',
-    },
+  {
+    name: 'Büyüme', price: 119, period: '/ay',
+    desc: 'Sadakat programı ve gelişmiş özellikler dahil.',
+    features: ['3 şube', '50 masa & QR', 'Dijital menü', 'Sadakat kartı', 'SMS bildirim', 'Öncelikli destek'],
+    cta: 'Hemen Başla', highlight: true,
   },
-}
+  {
+    name: 'Profesyonel', price: 189, period: '/ay',
+    desc: 'Zincir kafeler için tam güç, tam kontrol.',
+    features: ['Sınırsız şube', 'Sınırsız masa', 'Özel domain', 'API erişimi', 'Beyaz etiket', '7/24 destek'],
+    cta: 'Satış Ekibiyle Görüş', highlight: false,
+  },
+]
 
-// ─── Animations ───────────────────────────────────────────────────────────────
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] } },
-}
-const stagger: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
-}
+/* ── FAQ items ──────────────────────────────────────────────────────────────── */
+const FAQS = [
+  { q: 'Kurulum için teknik bilgi gerekiyor mu?', a: 'Hayır. Hesap açın, menünüzü yükleyin, masalara QR kodu yapıştırın — bitti. Ortalama kurulum süresi 20 dakika.' },
+  { q: 'Müşteriler uygulamayı indirmek zorunda mı?', a: 'Kesinlikle hayır. QR kodu okutan her telefon, tarayıcıdan doğrudan menüye erişir.' },
+  { q: 'Menüyü ne sıklıkta güncelleyebilirim?', a: 'Dilediğiniz kadar, anında. Fiyat değişikliği, sezonluk kampanya, günlük tükendi — tüm değişiklikler QR\'a anında yansır.' },
+  { q: 'Sadakat kartı nasıl çalışıyor?', a: 'Müşteri QR\'ı okuttuğunda telefon numarasıyla kaydolur. Siz belirleyebileceğiniz pul sayısına ulaşınca hediyesini kazanır.' },
+  { q: 'Verilerimi başka sisteme taşıyabilir miyim?', a: 'Evet. CSV ve JSON formatında dilediğiniz zaman tam dışa aktarım yapabilirsiniz.' },
+  { q: 'Ödeme güvenli mi?', a: 'Tüm ödemeler Stripe altyapısıyla işlenir. Kart bilgileriniz sistemlerimizde saklanmaz.' },
+  { q: 'İptal etmek istersem ne olur?', a: 'Sözleşme yok, ceza yok. Dilediğiniz an iptal edersiniz; dönem sonuna kadar erişim devam eder.' },
+  { q: '14 günlük deneme sırasında kredi kartı gerekiyor mu?', a: 'Hayır. Deneme bitince planınızı seçersiniz, o zaman kart bilgisi alınır.' },
+  { q: 'Birden fazla şubem var, ayrı hesap açmam gerekiyor mu?', a: 'Büyüme ve Profesyonel paketlerde tek hesaptan tüm şubelerinizi yönetirsiniz.' },
+  { q: 'Türkçe dışında dil destekleniyor mu?', a: 'Menüler çok dilli oluşturulabilir. Panel arayüzü şimdilik Türkçe ve İngilizce.' },
+]
 
-// ─── Mockups ─────────────────────────────────────────────────────────────────
-function OrderPanelMockup() {
-  const orders = [
-    { table: 'Masa 3', item: 'Latte, Kruvasan', status: 'Yeni', color: C.c4 },
-    { table: 'Masa 7', item: 'Espresso x2', status: 'Hazırlanıyor', color: C.c3 },
-    { table: 'Masa 12', item: 'Çay, Kek', status: 'Teslim', color: '#4ade80' },
-  ]
+/* ── StampCard preview ──────────────────────────────────────────────────────── */
+function StampCardPreview({ filled = 6 }: { filled?: number }) {
+  const stamps = Array.from({ length: 10 }, (_, i) => i < filled)
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-        <span className="text-xs" style={{ color: C.muted }}>Canlı — 3 aktif sipariş</span>
-      </div>
-      {orders.map((o, i) => (
-        <div key={i} className="flex items-center justify-between px-3 py-2.5 rounded-xl"
-          style={{ background: C.glass, border: `1px solid ${C.glassB}` }}>
-          <div>
-            <p className="text-sm font-medium text-white">{o.table}</p>
-            <p className="text-xs" style={{ color: C.muted }}>{o.item}</p>
-          </div>
-          <span className="text-xs px-2.5 py-1 rounded-full font-medium"
-            style={{ background: o.color + '22', color: o.color, border: `1px solid ${o.color}44` }}>
-            {o.status}
-          </span>
+    <div style={{
+      width: 340, maxWidth: '100%',
+      background: 'linear-gradient(135deg, #1A0F05 0%, #2A1A08 100%)',
+      borderRadius: 20,
+      padding: '24px 24px 20px',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,136,40,0.3)',
+      border: '1px solid rgba(200,136,40,0.25)',
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: '#C88828', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>Sadakat Kartı</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#EAE0C8', letterSpacing: '-0.02em' }}>Aromas Coffee</div>
         </div>
-      ))}
-    </div>
-  )
-}
-
-function MenuMockup() {
-  const items = [
-    { name: 'Latte', price: '₺65', cat: 'Kahveler' },
-    { name: 'Kruvasan', price: '₺45', cat: 'Pastane' },
-    { name: 'Smoothie', price: '₺85', cat: 'İçecekler' },
-  ]
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2 mb-3 flex-wrap">
-        {['Kahveler', 'Pastane', 'İçecekler'].map((c, i) => (
-          <span key={i} className="text-xs px-3 py-1 rounded-full"
-            style={{ background: i === 0 ? 'rgba(0,173,243,0.2)' : C.glass, color: i === 0 ? C.c4 : C.muted, border: `1px solid ${C.glassB}` }}>
-            {c}
-          </span>
+        <div style={{ fontSize: 26 }}>☕</div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
+        {stamps.map((f, i) => (
+          <div key={i} style={{
+            aspectRatio: '1', borderRadius: 10,
+            background: f ? 'linear-gradient(135deg, #C88828, #E8A030)' : 'rgba(200,136,40,0.1)',
+            border: `1px solid ${f ? '#C88828' : 'rgba(200,136,40,0.25)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18,
+          }}>
+            {f ? '☕' : ''}
+          </div>
         ))}
       </div>
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between px-3 py-2.5 rounded-xl"
-          style={{ background: C.glass, border: `1px solid ${C.glassB}` }}>
-          <div>
-            <p className="text-sm font-medium text-white">{item.name}</p>
-            <p className="text-xs" style={{ color: C.muted }}>{item.cat}</p>
-          </div>
-          <span className="text-sm font-semibold" style={{ color: C.c4 }}>{item.price}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 11, color: '#786450' }}>{filled}/10 pul toplandı</div>
+        <div style={{ fontSize: 11, color: '#C88828', fontWeight: 600 }}>
+          {10 - filled} pul kaldı → Ücretsiz Kahve
         </div>
-      ))}
-    </div>
-  )
-}
-
-function LoyaltyMockup() {
-  return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-2xl text-center"
-        style={{ background: `linear-gradient(135deg, rgba(0,110,163,0.2), rgba(0,173,243,0.12))`, border: `1px solid rgba(0,173,243,0.25)` }}>
-        <p className="text-white font-bold text-lg mb-3">Kafe İstanbul</p>
-        <div className="flex justify-center gap-1.5 my-3 flex-wrap">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="w-5 h-5 rounded-full"
-              style={{ background: i < 7 ? C.grad : 'rgba(255,255,255,0.08)', boxShadow: i < 7 ? `0 0 6px ${C.c4}66` : 'none' }} />
-          ))}
-        </div>
-        <p className="text-xs" style={{ color: C.muted }}>7 / 10 pul — 3 pul kaldı</p>
       </div>
-      <p className="text-xs text-center" style={{ color: C.muted }}>342 üye · Bu ay +28 yeni</p>
     </div>
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function LandingPage() {
-  const [lang, setLang] = useState<'TR' | 'EN'>('TR')
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [billingYearly, setBillingYearly] = useState(false)
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [showcaseTab, setShowcaseTab] = useState(0)
-  const [policyOpen, setPolicyOpen] = useState(false)
-  const [contactSent, setContactSent] = useState(false)
-  const { theme, toggle: toggleTheme } = useTheme()
-  // Loyalty card designer state
-  const [cardBg, setCardBg] = useState('#2C3E6B')
-  const [cardTextColor, setCardTextColor] = useState('#F5F0E8')
-  const [cardCompany, setCardCompany] = useState('')
-  const [stampIcon, setStampIcon] = useState('☕')
-  const [stampCount, setStampCount] = useState(7)
-  const [reward, setReward] = useState(lang === 'TR' ? '1 Bedava Kahve' : '1 Free Coffee')
-  const CARD_COLORS_LP = ['#2C3E6B', '#4A2C2A', '#C17F4A', '#4A7C59', '#2C2C2C', '#6B2737', '#5B4B8A', '#2A6B6B']
-  const STAMP_ICONS_LP = ['☕', '⭐', '❤️', '👑', '💎']
+/* ── Page component ─────────────────────────────────────────────────────────── */
+export default function HomePage() {
+  const { theme, toggle } = useTheme()
+  const isLight = theme === 'light'
 
-  const t = content[lang]
-  const navLinks = [
-    { label: t.nav.features, href: '#ozellikler' },
-    { label: t.nav.pricing, href: '#fiyatlandirma' },
-    { label: t.nav.about, href: '#hakkimizda' },
-    { label: t.nav.faq, href: '#sss' },
-    { label: t.nav.contact, href: '#iletisim' },
-  ]
+  const [stampCount, setStampCount] = useState(6)
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [contact, setContact] = useState({ name: '', email: '', phone: '', msg: '' })
+  const [sent, setSent] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', fn)
+    return () => window.removeEventListener('scroll', fn)
+  }, [])
+
+  function handleContact(e: React.FormEvent) {
+    e.preventDefault()
+    setSent(true)
+    setTimeout(() => setSent(false), 4000)
+  }
+
+  const statsReveal = useReveal()
+  const howReveal = useReveal()
+  const featReveal = useReveal()
+  const loyaltyReveal = useReveal()
+  const pricingReveal = useReveal()
+  const faqReveal = useReveal()
+  const contactReveal = useReveal()
+
+  const pg = isLight ? {
+    bg: '#FAF5EA', bg2: '#F3EBD6', amber: '#A06820', amberBright: '#C88828',
+    cream: '#1A1008', muted: '#786450', surface: '#FFFDF7',
+    border: 'rgba(160,104,32,0.25)', navBg: 'rgba(250,245,234,0.92)',
+  } : {
+    bg: '#080507', bg2: '#0F0A05', amber: '#C88828', amberBright: '#E8A030',
+    cream: '#EAE0C8', muted: '#786450', surface: 'rgba(26,15,5,0.85)',
+    border: 'rgba(200,136,40,0.2)', navBg: 'rgba(8,5,7,0.88)',
+  }
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+    <>
+      <style>{`
+        .pg-body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pg-display { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; letter-spacing: -0.04em; line-height: 1.0; }
 
-      {/* ═══ NAVBAR ═══════════════════════════════════════════════════════════ */}
-      <nav className="fixed top-0 left-0 right-0 z-50"
-        style={{ backdropFilter: 'blur(20px)', background: 'var(--color-nav-bg)', borderBottom: `1px solid ${C.glassB}` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <a href="#"><Logo variant="navbar" /></a>
+        .pg-btn-amber {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 0.9375rem;
+          background: linear-gradient(135deg, #C88828, #E8A030);
+          color: #0F0A05; border: none; cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 20px rgba(200,136,40,0.35);
+          text-decoration: none; white-space: nowrap;
+          position: relative; overflow: hidden;
+        }
+        .pg-btn-amber::after {
+          content: ''; position: absolute; inset: 0;
+          background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%);
+          transform: translateX(-120%); transition: transform 0.5s;
+        }
+        .pg-btn-amber:hover::after { transform: translateX(120%); }
+        .pg-btn-amber:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(200,136,40,0.5); }
 
-            {/* Desktop links */}
-            <div className="hidden lg:flex items-center gap-7">
-              {navLinks.map(l => (
-                <a key={l.label} href={l.href} className="nav-link font-medium">{l.label}</a>
+        .pg-btn-ghost {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 13px 28px; border-radius: 12px; font-weight: 600; font-size: 0.9375rem;
+          background: transparent; cursor: pointer;
+          transition: background 0.2s, transform 0.2s;
+          text-decoration: none; white-space: nowrap;
+        }
+        .pg-btn-ghost:hover { transform: translateY(-1px); background: rgba(200,136,40,0.08); }
+
+        .pg-nav-link {
+          font-size: 0.875rem; font-weight: 500; text-decoration: none;
+          position: relative; padding: 4px 0; transition: opacity 0.15s;
+        }
+        .pg-nav-link::after {
+          content: ''; position: absolute; bottom: 0; left: 50%; right: 50%;
+          height: 1.5px; background: #C88828; border-radius: 2px;
+          transition: left 0.25s, right 0.25s;
+        }
+        .pg-nav-link:hover::after { left: 0; right: 0; }
+
+        .pg-feature-card {
+          border-radius: 20px; padding: 2rem;
+          transition: transform 0.35s cubic-bezier(.2,.8,.4,1), box-shadow 0.35s;
+          transform: translateZ(0); will-change: transform;
+        }
+        .pg-feature-card:hover { transform: translateY(-8px) rotateX(2deg); }
+
+        .pg-step-num {
+          font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 3.5rem; line-height: 1;
+          background: linear-gradient(135deg, #C88828, #E8A030);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        .pg-pricing-card {
+          border-radius: 24px; padding: 2rem;
+          transition: transform 0.3s, box-shadow 0.3s;
+          position: relative;
+        }
+        .pg-pricing-card:not(.pg-highlight):hover { transform: translateY(-6px); }
+        .pg-highlight { transform: translateY(-12px); box-shadow: 0 32px 80px rgba(200,136,40,0.3) !important; }
+        .pg-highlight:hover { transform: translateY(-18px); }
+
+        .pg-reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .pg-visible { opacity: 1; transform: translateY(0); }
+        .pg-d1 { transition-delay: 0.1s; }
+        .pg-d2 { transition-delay: 0.2s; }
+        .pg-d3 { transition-delay: 0.3s; }
+        .pg-d4 { transition-delay: 0.4s; }
+
+        .pg-faq-item { border-bottom: 1px solid; overflow: hidden; }
+        .pg-faq-q {
+          width: 100%; text-align: left; display: flex; justify-content: space-between;
+          align-items: center; padding: 20px 0; background: none; border: none; cursor: pointer; gap: 16px;
+        }
+        .pg-chevron { transition: transform 0.25s; flex-shrink: 0; }
+        .pg-chevron.open { transform: rotate(45deg); }
+        .pg-faq-body { overflow: hidden; transition: max-height 0.35s ease, opacity 0.3s; }
+        .pg-faq-body.open { max-height: 300px; opacity: 1; }
+        .pg-faq-body.closed { max-height: 0; opacity: 0; }
+
+        .pg-grain {
+          position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.035;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          background-repeat: repeat; background-size: 200px 200px;
+        }
+
+        @media (max-width: 900px) {
+          .pg-hero-grid { grid-template-columns: 1fr !important; }
+          .pg-hero-mockup { display: none !important; }
+          .pg-nav-links { display: none !important; }
+          .pg-steps-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .pg-features-asym { grid-template-columns: 1fr !important; }
+          .pg-features-asym > div[style*="grid-row"] { grid-row: auto !important; }
+          .pg-features-asym > div[style*="grid-column"] { grid-column: auto !important; }
+          .pg-pricing-grid { grid-template-columns: 1fr !important; }
+          .pg-contact-grid { grid-template-columns: 1fr !important; }
+          .pg-footer-grid { grid-template-columns: 1fr 1fr !important; }
+          .pg-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .pg-stats-grid > div:nth-child(2) { border-right: none !important; }
+        }
+        @media (max-width: 600px) {
+          .pg-steps-grid { grid-template-columns: 1fr !important; }
+          .pg-footer-grid { grid-template-columns: 1fr !important; }
+          .pg-stats-grid { grid-template-columns: 1fr !important; }
+          .pg-stats-grid > div { border-right: none !important; border-bottom: 1px solid rgba(200,136,40,0.2); }
+        }
+      `}</style>
+
+      <div className="pg-body" style={{ background: pg.bg, color: pg.cream, minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
+        <div className="pg-grain" />
+        <div style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+          background: isLight
+            ? 'radial-gradient(ellipse 70% 50% at 15% 20%, rgba(200,136,40,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 85% 70%, rgba(160,104,32,0.06) 0%, transparent 60%)'
+            : 'radial-gradient(ellipse 70% 50% at 15% 20%, rgba(200,136,40,0.12) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 85% 70%, rgba(232,160,48,0.07) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 100%, rgba(200,136,40,0.06) 0%, transparent 50%)',
+        }} />
+
+        {/* ── NAVBAR ──────────────────────────────────────────────────────────── */}
+        <nav style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 clamp(20px, 5vw, 64px)', height: 68,
+          background: scrolled ? pg.navBg : 'transparent',
+          backdropFilter: scrolled ? 'blur(20px)' : 'none',
+          borderBottom: scrolled ? `1px solid ${pg.border}` : '1px solid transparent',
+          transition: 'background 0.3s, backdrop-filter 0.3s, border-color 0.3s',
+        }}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>☕</span>
+            <span className="pg-display" style={{
+              fontSize: '1.3rem', letterSpacing: '-0.03em',
+              background: 'linear-gradient(135deg, #C88828, #E8A030)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+            }}>Garsonsal</span>
+          </Link>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+            <div className="pg-nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+              {[['Özellikler', 'ozellikler'], ['Fiyatlar', 'fiyatlar'], ['SSS', 'sss'], ['İletişim', 'iletisim']].map(([label, anchor]) => (
+                <a key={anchor} href={`#${anchor}`} className="pg-nav-link" style={{ color: pg.muted }}>{label}</a>
               ))}
             </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button
+                onClick={toggle}
+                className="theme-toggle"
+                aria-label="Tema değiştir"
+                style={{
+                  width: 36, height: 36, borderRadius: 10, border: `1px solid ${pg.border}`,
+                  background: 'transparent', color: pg.muted, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
+                }}
+              >
+                {isLight ? '🌙' : '☀️'}
+              </button>
+              <Link href="/giris" className="pg-btn-amber" style={{ padding: '9px 22px', fontSize: '0.875rem', borderRadius: 10 }}>
+                Giriş Yap
+              </Link>
+            </div>
+          </div>
+        </nav>
 
-            {/* Desktop right */}
-            <div className="hidden lg:flex items-center gap-2.5">
-              <button onClick={() => setLang(lang === 'TR' ? 'EN' : 'TR')}
-                className="ghost-btn text-xs px-3 py-1.5 rounded-lg font-medium cursor-pointer">
-                {lang === 'TR' ? '🇺🇸 EN' : '🇹🇷 TR'}
-              </button>
-              <button onClick={toggleTheme} className="theme-toggle" title={theme === 'dark' ? 'Açık Mod' : 'Koyu Mod'}>
-                {theme === 'dark'
-                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                }
-              </button>
-              <Link href="/giris" className="ghost-btn text-sm px-4 py-2 rounded-xl font-medium">{t.nav.login}</Link>
-              <Link href="/kayit" className="gradient-btn text-sm px-4 py-2 rounded-xl">{t.nav.trial}</Link>
+        {/* ── HERO ────────────────────────────────────────────────────────────── */}
+        <section style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center',
+          padding: 'clamp(100px, 12vh, 140px) clamp(20px, 5vw, 64px) clamp(60px, 8vh, 100px)',
+          position: 'relative', zIndex: 1,
+        }}>
+          <div className="pg-hero-grid" style={{ maxWidth: 1240, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+            <div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 24,
+                padding: '6px 14px', borderRadius: 100,
+                background: isLight ? 'rgba(200,136,40,0.12)' : 'rgba(200,136,40,0.1)',
+                border: `1px solid ${pg.border}`,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C88828', display: 'block' }} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Türkiye&apos;de 1.200+ Kafe Kullanıyor
+                </span>
+              </div>
+
+              <h1 className="pg-display" style={{ fontSize: 'clamp(2.5rem, 5.5vw, 4.5rem)', color: pg.cream, marginBottom: 24 }}>
+                Menü. Sipariş.<br />
+                <span style={{ background: 'linear-gradient(135deg, #C88828, #E8A030)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                  Sadakat.
+                </span><br />
+                Tek QR&apos;da.
+              </h1>
+
+              <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.125rem)', color: pg.muted, lineHeight: 1.7, marginBottom: 36, maxWidth: 480 }}>
+                Masaya QR yapıştır, menün dijitale taşın. Müşteriler sipariş verir, pul toplar,
+                ödülünü kazanır — sen sadece en iyi kahveye odaklanırsın.
+              </p>
+
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                <Link href="/giris" className="pg-btn-amber">14 Gün Ücretsiz Başla →</Link>
+                <a href="#ozellikler" className="pg-btn-ghost" style={{ color: pg.muted, border: `1px solid ${pg.border}` }}>
+                  Nasıl çalışır?
+                </a>
+              </div>
+
+              <p style={{ fontSize: '0.75rem', color: pg.muted, marginTop: 14, opacity: 0.7 }}>
+                Kredi kartı gerekmez · Kurulum 20 dakika · İptal kolayca
+              </p>
             </div>
 
-            {/* Hamburger */}
-            <button className="lg:hidden ghost-btn p-2 rounded-xl" onClick={() => setMobileOpen(!mobileOpen)}>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                {mobileOpen
-                  ? <><line x1="4" y1="4" x2="16" y2="16" stroke="#fff" strokeWidth="2" strokeLinecap="round" /><line x1="16" y1="4" x2="4" y2="16" stroke="#fff" strokeWidth="2" strokeLinecap="round" /></>
-                  : <><line x1="3" y1="5" x2="17" y2="5" stroke="#fff" strokeWidth="2" strokeLinecap="round" /><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" /><line x1="3" y1="15" x2="17" y2="15" stroke="#fff" strokeWidth="2" strokeLinecap="round" /></>}
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              className="lg:hidden overflow-hidden" style={{ background: 'rgba(0,19,38,0.97)', borderBottom: `1px solid ${C.glassB}` }}>
-              <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
-                {navLinks.map(l => (
-                  <a key={l.label} href={l.href} onClick={() => setMobileOpen(false)}
-                    className="block py-2.5 px-3 rounded-lg text-sm nav-link hover:bg-white/5">{l.label}</a>
-                ))}
-                <div className="flex gap-2 pt-3 border-t mt-3" style={{ borderColor: C.glassB }}>
-                  <button onClick={() => { setLang(lang === 'TR' ? 'EN' : 'TR'); setMobileOpen(false) }} className="ghost-btn text-xs px-3 py-2 rounded-lg">
-                    {lang === 'TR' ? '🇺🇸 EN' : '🇹🇷 TR'}
-                  </button>
-                  <Link href="/giris" onClick={() => setMobileOpen(false)} className="ghost-btn text-sm px-4 py-2 rounded-xl flex-1 text-center">{t.nav.login}</Link>
-                  <Link href="/kayit" onClick={() => setMobileOpen(false)} className="gradient-btn text-sm px-4 py-2 rounded-xl flex-1 text-center">{t.nav.trial}</Link>
+            {/* Dashboard mockup */}
+            <div className="pg-hero-mockup" style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: '100%', maxWidth: 460,
+                background: isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.8)',
+                backdropFilter: 'blur(24px)',
+                border: `1px solid ${pg.border}`,
+                borderRadius: 24, overflow: 'hidden',
+                boxShadow: isLight
+                  ? '0 24px 80px rgba(0,0,0,0.12)'
+                  : '0 24px 80px rgba(0,0,0,0.5), 0 4px 20px rgba(200,136,40,0.08)',
+              }}>
+                <div style={{
+                  padding: '12px 16px', borderBottom: `1px solid ${pg.border}`,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: isLight ? 'rgba(250,245,234,0.6)' : 'rgba(15,10,5,0.6)',
+                }}>
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    {['#ff5f57', '#febc2e', '#28c840'].map(c => (
+                      <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
+                    ))}
+                  </div>
+                  <div style={{
+                    flex: 1, height: 22, borderRadius: 6, marginLeft: 4,
+                    background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+                    display: 'flex', alignItems: 'center', paddingLeft: 8,
+                  }}>
+                    <span style={{ fontSize: '0.65rem', color: pg.muted }}>garsonsal.app/aromas-coffee</span>
+                  </div>
+                </div>
+                <div style={{ padding: '20px 20px 24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                    {([['☕', '247', 'Bugün'], ['⭐', '89', 'Yeni üye'], ['💰', '₺4.280', 'Ciro']] as const).map(([icon, val, label]) => (
+                      <div key={label} style={{
+                        borderRadius: 12, padding: '12px 10px', textAlign: 'center',
+                        background: isLight ? 'rgba(200,136,40,0.08)' : 'rgba(200,136,40,0.1)',
+                        border: `1px solid ${pg.border}`,
+                      }}>
+                        <div style={{ fontSize: 16, marginBottom: 4 }}>{icon}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: pg.cream, lineHeight: 1 }}>{val}</div>
+                        <div style={{ fontSize: '0.625rem', color: pg.muted, marginTop: 3 }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: pg.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Popüler Ürünler</div>
+                    {([['Filtre Kahve', '₺65', true], ['Cappuccino', '₺80', false], ['Cheesecake', '₺95', false]] as const).map(([name, price, active]) => (
+                      <div key={name} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '9px 12px', borderRadius: 10, marginBottom: 5,
+                        background: active ? (isLight ? 'rgba(200,136,40,0.12)' : 'rgba(200,136,40,0.15)') : 'transparent',
+                        border: `1px solid ${active ? pg.border : 'transparent'}`,
+                      }}>
+                        <span style={{ fontSize: '0.8rem', color: pg.cream, fontWeight: active ? 600 : 400 }}>{name}</span>
+                        <span style={{ fontSize: '0.8rem', color: pg.amber, fontWeight: 700 }}>{price}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    borderRadius: 12, padding: '12px 14px',
+                    background: 'linear-gradient(135deg, rgba(200,136,40,0.2), rgba(232,160,48,0.08))',
+                    border: `1px solid ${pg.border}`,
+                  }}>
+                    <div style={{ fontSize: '0.65rem', color: pg.amber, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 8 }}>SADAKAT KARTI — Ayla K.</div>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <div key={i} style={{
+                          flex: 1, aspectRatio: '1', borderRadius: 5,
+                          background: i < 7 ? 'linear-gradient(135deg, #C88828, #E8A030)' : 'rgba(200,136,40,0.15)',
+                          border: `1px solid ${i < 7 ? '#C88828' : 'rgba(200,136,40,0.2)'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9,
+                        }}>{i < 7 ? '☕' : ''}</div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '0.6rem', color: pg.muted, marginTop: 6 }}>3 pul kaldı → Ücretsiz Kahve</div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
+              <div style={{
+                position: 'absolute', top: -16, right: -10,
+                background: 'linear-gradient(135deg, #C88828, #E8A030)',
+                borderRadius: 12, padding: '10px 14px',
+                boxShadow: '0 8px 24px rgba(200,136,40,0.4)',
+                color: '#0F0A05', fontWeight: 700, fontSize: '0.75rem', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '1.25rem', lineHeight: 1, marginBottom: 2 }}>+34%</div>
+                <div>tekrar ziyaret</div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ HERO ═════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
-        <div className="orb w-[560px] h-[560px] -top-20 left-[10%]" style={{ background: 'rgba(0,110,163,0.28)' }} />
-        <div className="orb w-[400px] h-[400px] bottom-0 right-[5%]" style={{ background: 'rgba(0,173,243,0.14)' }} />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left */}
-            <motion.div initial="hidden" animate="visible" variants={stagger}>
-              <motion.div variants={fadeUp}>
-                <span className="badge mb-6">{t.hero.badge}</span>
-              </motion.div>
-              <motion.h1 variants={fadeUp} className="section-title mb-6">
-                {t.hero.title1}<br />
-                <span style={{ background: C.gradH, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                  {t.hero.title2}
-                </span>
-              </motion.h1>
-              <motion.p variants={fadeUp} className="text-lg mb-8 leading-relaxed max-w-lg" style={{ color: C.muted }}>
-                {t.hero.subtitle}
-              </motion.p>
-              <motion.div variants={fadeUp} className="flex flex-wrap gap-3 mb-8">
-                <Link href="/kayit" className="gradient-btn text-sm px-6 py-3 rounded-xl">{t.hero.cta1}</Link>
-                <a href="#panel" className="ghost-btn text-sm px-6 py-3 rounded-xl font-medium">{t.hero.cta2}</a>
-              </motion.div>
-              <motion.p variants={fadeUp} className="text-sm" style={{ color: C.faint }}>{t.hero.proof}</motion.p>
-            </motion.div>
-
-            {/* Right — 3D dashboard mockup */}
-            <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.75, delay: 0.2 }}
-              className="relative hidden lg:block"
-              style={{ perspective: '1100px' }}>
-              {/* Ambient glow */}
-              <div className="absolute inset-0 rounded-3xl"
-                style={{ background: `radial-gradient(ellipse at 50% 80%, rgba(0,110,163,0.3) 0%, transparent 70%)`, filter: 'blur(32px)' }} />
-
-              {/* 3D card */}
-              <div className="glass-elevated p-6 relative"
-                style={{ transform: 'rotateX(8deg) rotateY(-10deg) translateZ(0)', transformStyle: 'preserve-3d', transition: 'transform 0.4s ease', boxShadow: '0 30px 80px rgba(0,19,38,0.7), 0 4px 20px rgba(0,173,243,0.2), inset 0 1px 0 rgba(0,173,243,0.15)' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.transform = 'rotateX(3deg) rotateY(-4deg) translateZ(20px)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.transform = 'rotateX(8deg) rotateY(-10deg) translateZ(0)')}>
-                {/* macOS dots */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex gap-1.5">
-                    {['#FF5F56', '#FFBD2E', '#27C93F'].map(c => <div key={c} className="w-3 h-3 rounded-full" style={{ background: c }} />)}
-                  </div>
-                  <span className="text-xs ml-2" style={{ color: C.faint }}>garsonsal — panel</span>
-                  <span className="text-xs ml-auto" style={{ color: C.faint }}>08:47</span>
+        {/* ── STATS BAR ───────────────────────────────────────────────────────── */}
+        <section style={{ padding: '0 clamp(20px, 5vw, 64px) 80px', position: 'relative', zIndex: 1 }}>
+          <div
+            ref={statsReveal.ref}
+            className={`pg-reveal${statsReveal.visible ? ' pg-visible' : ''}`}
+            style={{ maxWidth: 1240, margin: '0 auto' }}
+          >
+            <div
+              className="pg-stats-grid"
+              style={{
+                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
+                borderRadius: 20, overflow: 'hidden',
+                border: `1px solid ${pg.border}`,
+                background: isLight ? 'rgba(255,253,247,0.8)' : 'rgba(26,15,5,0.6)',
+              }}
+            >
+              {([['1.200+', 'Aktif kafe'], ['₺2.4M+', 'Aylık işlem hacmi'], ['14 dk', 'Ortalama kurulum'], ['98%', 'Müşteri memnuniyeti']] as const).map(([val, label], i) => (
+                <div key={i} style={{
+                  padding: 'clamp(20px, 3vw, 32px)',
+                  borderRight: i < 3 ? `1px solid ${pg.border}` : 'none',
+                  textAlign: 'center',
+                }}>
+                  <div className="pg-display" style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', color: pg.amber, marginBottom: 6 }}>{val}</div>
+                  <div style={{ fontSize: '0.875rem', color: pg.muted }}>{label}</div>
                 </div>
-                {/* Table grid */}
-                <div className="grid grid-cols-4 gap-2 mb-4">
-                  {[1,2,3,4,5,6,7,8].map(n => (
-                    <div key={n} className="aspect-square rounded-xl flex items-center justify-center text-xs font-bold"
-                      style={{
-                        background: n === 3 || n === 7 ? 'rgba(0,173,243,0.2)' : n === 5 ? 'rgba(0,110,163,0.15)' : C.glass,
-                        border: `1px solid ${n === 3 || n === 7 ? 'rgba(0,173,243,0.4)' : C.glassB}`,
-                        color: n === 3 || n === 7 ? C.c4 : n === 5 ? C.c3 : C.faint,
-                        boxShadow: n === 3 || n === 7 ? `0 0 12px rgba(0,173,243,0.25)` : 'none',
-                      }}>
-                      {n}
-                    </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ────────────────────────────────────────────────────── */}
+        <section id="nasil-calisir" style={{ padding: '80px clamp(20px, 5vw, 64px)', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+            <div ref={howReveal.ref} className={`pg-reveal${howReveal.visible ? ' pg-visible' : ''}`} style={{ textAlign: 'center', marginBottom: 64 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Nasıl Çalışır</div>
+              <h2 className="pg-display" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: pg.cream }}>4 adımda dijital dönüşüm</h2>
+            </div>
+            <div className="pg-steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24, position: 'relative' }}>
+              <div style={{
+                position: 'absolute', top: 28, left: '12.5%', right: '12.5%',
+                height: 1, background: `linear-gradient(to right, transparent, ${pg.border}, ${pg.border}, transparent)`, zIndex: 0,
+              }} />
+              {[
+                { num: '01', icon: '📝', title: 'Hesap Aç', desc: 'E-posta ve şube adınla 2 dakikada kaydol. Onay bekleme, anında başla.' },
+                { num: '02', icon: '🍽️', title: 'Menü Ekle', desc: 'Kategoriler, ürünler, fotoğraflar — sürükle bırak ile düzenle.' },
+                { num: '03', icon: '📱', title: 'QR Yapıştır', desc: 'Her masa için QR üret, yazdır, masaya koy. Müşteriler okuttu mu? Hazır.' },
+                { num: '04', icon: '⭐', title: 'Sadakat Kazan', desc: 'Pul topla sistemi otomatik çalışır. Sen sadece kahve yap.' },
+              ].map((step, i) => (
+                <div key={i} className={`pg-reveal${howReveal.visible ? ' pg-visible' : ''} pg-d${i + 1}`} style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px',
+                    background: isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.8)',
+                    border: `1px solid ${pg.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                    boxShadow: isLight ? '0 4px 16px rgba(0,0,0,0.06)' : '0 4px 16px rgba(0,0,0,0.3)',
+                  }}>{step.icon}</div>
+                  <div className="pg-step-num" style={{ marginBottom: 8 }}>{step.num}</div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: pg.cream, marginBottom: 8 }}>{step.title}</h3>
+                  <p style={{ fontSize: '0.875rem', color: pg.muted, lineHeight: 1.6 }}>{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FEATURES ────────────────────────────────────────────────────────── */}
+        <section id="ozellikler" style={{ padding: '80px clamp(20px, 5vw, 64px)', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+            <div ref={featReveal.ref} className={`pg-reveal${featReveal.visible ? ' pg-visible' : ''}`} style={{ textAlign: 'center', marginBottom: 56 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Özellikler</div>
+              <h2 className="pg-display" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: pg.cream }}>
+                Kafeye özel her şey<br />tek çatı altında
+              </h2>
+            </div>
+
+            <div className="pg-features-asym" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 16 }}>
+              {/* Big card */}
+              <div
+                className={`pg-feature-card pg-reveal${featReveal.visible ? ' pg-visible' : ''} pg-d1`}
+                style={{
+                  gridRow: '1 / 3',
+                  background: isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.75)',
+                  border: `1px solid ${pg.border}`,
+                  boxShadow: isLight ? '0 4px 24px rgba(0,0,0,0.06)' : '0 8px 32px rgba(0,0,0,0.3)',
+                  display: 'flex', flexDirection: 'column',
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 20 }}>📱</div>
+                <h3 className="pg-display" style={{ fontSize: '1.75rem', color: pg.cream, marginBottom: 12 }}>Dijital Menü</h3>
+                <p style={{ fontSize: '0.9375rem', color: pg.muted, lineHeight: 1.7, marginBottom: 24 }}>
+                  Fotoğraflı, kategorili, filtrelenebilir dijital menü. Herhangi bir cihazda mükemmel görünür.
+                  Fiyat değişikliği saniyeler içinde yansır — yeniden baskı yok, sticker yok.
+                </p>
+                <div style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {['Türkçe & İngilizce', 'Alerjen bilgisi', 'Kalori değeri', 'Anlık güncelleme'].map(tag => (
+                    <span key={tag} style={{
+                      padding: '4px 12px', borderRadius: 100, fontSize: '0.75rem', fontWeight: 600,
+                      background: 'rgba(200,136,40,0.1)', border: `1px solid ${pg.border}`, color: pg.amber,
+                    }}>{tag}</span>
                   ))}
                 </div>
-                <OrderPanelMockup />
               </div>
 
-              {/* Floating notifications */}
-              <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                className="absolute -top-5 -right-8 glass-card px-4 py-2.5 text-sm font-medium text-white whitespace-nowrap"
-                style={{ boxShadow: `0 0 24px rgba(0,173,243,0.3)`, border: `1px solid rgba(0,173,243,0.3)` }}>
-                {t.hero.n1}
-              </motion.div>
-              <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 3.5, ease: 'easeInOut', delay: 0.7 }}
-                className="absolute -bottom-5 -left-8 glass-card px-4 py-2.5 text-sm font-medium text-white whitespace-nowrap"
-                style={{ boxShadow: `0 0 20px rgba(0,110,163,0.3)`, border: `1px solid rgba(0,110,163,0.3)` }}>
-                {t.hero.n2}
-              </motion.div>
-            </motion.div>
+              <div
+                className={`pg-feature-card pg-reveal${featReveal.visible ? ' pg-visible' : ''} pg-d2`}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(200,136,40,0.15), rgba(200,136,40,0.05))',
+                  border: `1px solid ${pg.border}`,
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 16 }}>⭐</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: pg.cream, marginBottom: 10 }}>Sadakat Programı</h3>
+                <p style={{ fontSize: '0.875rem', color: pg.muted, lineHeight: 1.6 }}>Pul bas sistemiyle müşterileri geri getir. Ödülü sen belirlersin.</p>
+              </div>
+
+              <div
+                className={`pg-feature-card pg-reveal${featReveal.visible ? ' pg-visible' : ''} pg-d3`}
+                style={{
+                  background: isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.75)',
+                  border: `1px solid ${pg.border}`,
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 16 }}>📊</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: pg.cream, marginBottom: 10 }}>Anlık Analitik</h3>
+                <p style={{ fontSize: '0.875rem', color: pg.muted, lineHeight: 1.6 }}>En çok sipariş edilen ürünler, yoğun saatler, yeni vs. tekrar müşteri oranı.</p>
+              </div>
+
+              <div
+                className={`pg-feature-card pg-reveal${featReveal.visible ? ' pg-visible' : ''} pg-d4`}
+                style={{
+                  gridColumn: '2 / 4',
+                  background: isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.75)',
+                  border: `1px solid ${pg.border}`,
+                  display: 'flex', gap: 24, alignItems: 'flex-start',
+                }}
+              >
+                <div style={{ fontSize: 36, flexShrink: 0 }}>🔗</div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: pg.cream, marginBottom: 8 }}>QR + Sipariş Entegrasyonu</h3>
+                  <p style={{ fontSize: '0.875rem', color: pg.muted, lineHeight: 1.6 }}>
+                    Her masa için benzersiz QR. Müşteri kendi telefonundan sipariş verir, sen panelden görürsün. Çaycı çağırmak yok.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className={`pg-reveal${featReveal.visible ? ' pg-visible' : ''}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16 }}>
+              {[
+                { icon: '🖨️', title: 'Kişiselleştir', desc: 'Logo, renk, font — markanı yansıt.' },
+                { icon: '📲', title: 'SMS Bildirimi', desc: 'Sipariş, ödül, kampanya bildirimleri.' },
+                { icon: '🔒', title: 'KVKK Uyumlu', desc: "Müşteri verisi Türkiye'de tutulur." },
+              ].map((f, i) => (
+                <div key={i} className="pg-feature-card" style={{
+                  background: isLight ? 'rgba(255,253,247,0.7)' : 'rgba(26,15,5,0.5)',
+                  border: `1px solid ${pg.border}`,
+                  display: 'flex', gap: 16, alignItems: 'flex-start',
+                }}>
+                  <span style={{ fontSize: 24, flexShrink: 0 }}>{f.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: pg.cream, marginBottom: 4 }}>{f.title}</div>
+                    <div style={{ fontSize: '0.85rem', color: pg.muted }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ HOW IT WORKS ═════════════════════════════════════════════════════ */}
-      <section className="py-24 relative" style={{ borderTop: `1px solid ${C.glassB}` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-16">{t.steps.title}</motion.h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5" style={{ perspective: '800px' }}>
-              {t.steps.items.map((step, i) => (
-                <motion.div key={i} variants={fadeUp} className="glass-card p-6 relative"
-                  style={{ transform: 'translateZ(0)', transition: 'transform 0.3s ease, box-shadow 0.3s ease' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-6px) translateZ(16px) rotateX(3deg)'; (e.currentTarget as HTMLElement).style.boxShadow = `0 24px 48px rgba(0,19,38,0.6), 0 4px 16px rgba(0,173,243,0.2)` }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateZ(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'var(--glass-shadow)' }}>
-                  <div className="text-5xl font-extrabold mb-4" style={{ background: C.gradH, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: 1 }}>
-                    {step.num}
+        {/* ── LOYALTY CARD DESIGNER ───────────────────────────────────────────── */}
+        <section id="sadakat" style={{ padding: '80px clamp(20px, 5vw, 64px)', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+            <div ref={loyaltyReveal.ref} className={`pg-reveal${loyaltyReveal.visible ? ' pg-visible' : ''}`}>
+              <div style={{
+                borderRadius: 28,
+                background: isLight
+                  ? 'linear-gradient(135deg, rgba(255,253,247,0.95) 0%, rgba(243,235,214,0.7) 100%)'
+                  : 'linear-gradient(135deg, rgba(26,15,5,0.85) 0%, rgba(15,10,5,0.9) 100%)',
+                border: `1px solid ${pg.border}`,
+                padding: 'clamp(32px, 5vw, 56px)',
+                boxShadow: isLight ? '0 4px 32px rgba(0,0,0,0.06)' : '0 8px 48px rgba(0,0,0,0.4)',
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'center',
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Sadakat Tasarımcısı</div>
+                  <h2 className="pg-display" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', color: pg.cream, marginBottom: 16 }}>
+                    Müşterini geri<br />getiren kart
+                  </h2>
+                  <p style={{ fontSize: '1rem', color: pg.muted, lineHeight: 1.7, marginBottom: 32 }}>
+                    Kaç pul, ne ödül — sen belirlersin. Kartı markanla tasarla, müşteriler QR&apos;ı okutunca otomatik pul kazanır.
+                  </p>
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: pg.muted, display: 'block', marginBottom: 10 }}>
+                      Dolu pul sayısı: <span style={{ color: pg.amber }}>{stampCount}/10</span>
+                    </label>
+                    <input
+                      type="range" min={0} max={10} value={stampCount}
+                      onChange={e => setStampCount(Number(e.target.value))}
+                      style={{ width: '100%', accentColor: '#C88828' }}
+                    />
                   </div>
-                  {i < 3 && <div className="hidden lg:block absolute top-10 -right-2.5 w-5 h-px" style={{ background: `linear-gradient(90deg, ${C.c3}66, ${C.c4}66)` }} />}
-                  <h3 className="font-bold text-white text-base mb-2">{step.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: C.muted }}>{step.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ FEATURES ═════════════════════════════════════════════════════════ */}
-      <section id="ozellikler" className="py-24 relative">
-        <div className="orb w-96 h-96 top-1/2 -translate-y-1/2 left-0" style={{ background: 'rgba(0,173,243,0.1)' }} />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-4">{t.features.title}</motion.h2>
-            <motion.p variants={fadeUp} className="text-center mb-14 text-lg" style={{ color: C.muted }}>
-              {lang === 'TR' ? 'QR siparişten dijital sadakate, tüm araçlar tek çatı altında.' : 'From QR ordering to digital loyalty, all tools under one roof.'}
-            </motion.p>
-            {/* 3D perspective grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" style={{ perspective: '1000px' }}>
-              {t.features.items.map((f, i) => (
-                <motion.div key={i} variants={fadeUp} className="feature-card">
-                  <div className="text-3xl mb-4">{f.icon}</div>
-                  <h3 className="font-bold text-white text-base mb-2">{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: C.muted }}>{f.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ STATS ════════════════════════════════════════════════════════════ */}
-      <section className="py-24 relative"
-        style={{ background: `linear-gradient(180deg, transparent 0%, rgba(0,59,94,0.15) 50%, transparent 100%)` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-16">{t.stats.title}</motion.h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {t.stats.items.map((s, i) => (
-                <motion.div key={i} variants={fadeUp} className="glass-card p-8 text-center"
-                  style={{ boxShadow: `0 8px 32px rgba(0,19,38,0.5), 0 0 0 1px rgba(0,173,243,0.1), inset 0 1px 0 rgba(0,173,243,0.1)` }}>
-                  <div className="text-5xl font-extrabold mb-3"
-                    style={{ background: C.gradH, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', letterSpacing: '-0.02em', filter: `drop-shadow(0 0 16px ${C.c4}55)` }}>
-                    {s.value}
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {['☕ Kahve', '⭐ Puan', '❤️ Kalp', '👑 Taç', '💎 Elmas'].map(s => (
+                      <button key={s} style={{
+                        padding: '7px 14px', borderRadius: 100, fontSize: '0.8rem', fontWeight: 600,
+                        background: 'rgba(200,136,40,0.1)', border: `1px solid ${pg.border}`,
+                        color: pg.amber, cursor: 'pointer',
+                        transition: 'background 0.2s, transform 0.15s',
+                      }}
+                        onMouseEnter={e => { (e.currentTarget).style.background = 'rgba(200,136,40,0.25)'; (e.currentTarget).style.transform = 'scale(1.05)' }}
+                        onMouseLeave={e => { (e.currentTarget).style.background = 'rgba(200,136,40,0.1)'; (e.currentTarget).style.transform = 'scale(1)' }}
+                      >{s}</button>
+                    ))}
                   </div>
-                  <p className="text-sm" style={{ color: C.muted }}>{s.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ SHOWCASE ═════════════════════════════════════════════════════════ */}
-      <section id="panel" className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-4">{t.showcase.title}</motion.h2>
-            <motion.p variants={fadeUp} className="text-center mb-8" style={{ color: C.muted }}>
-              {lang === 'TR' ? 'Gerçek zamanlı sipariş yönetimi, menü düzenleme ve loyalty takibi.' : 'Real-time order management, menu editing, and loyalty tracking.'}
-            </motion.p>
-            <motion.div variants={fadeUp} className="flex justify-center gap-2 mb-10 flex-wrap">
-              {t.showcase.tabs.map((tab, i) => (
-                <button key={i} onClick={() => setShowcaseTab(i)}
-                  className="text-sm px-5 py-2 rounded-xl transition-all font-medium"
-                  style={{
-                    background: showcaseTab === i ? C.grad : C.glass,
-                    color: showcaseTab === i ? '#fff' : C.muted,
-                    border: `1px solid ${showcaseTab === i ? 'transparent' : C.glassB}`,
-                    boxShadow: showcaseTab === i ? `0 4px 16px rgba(0,173,243,0.25)` : 'none',
-                  }}>
-                  {tab}
-                </button>
-              ))}
-            </motion.div>
-            <motion.div variants={fadeUp} className="glass-elevated p-8 max-w-2xl mx-auto relative"
-              style={{ boxShadow: `0 32px 80px rgba(0,19,38,0.65), 0 0 0 1px rgba(0,173,243,0.15), inset 0 1px 0 rgba(0,173,243,0.1)` }}>
-              <div className="absolute inset-0 rounded-2xl pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at 50% 110%, rgba(0,110,163,0.15) 0%, transparent 60%)' }} />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-5">
-                  {['#FF5F56', '#FFBD2E', '#27C93F'].map(c => <div key={c} className="w-3 h-3 rounded-full" style={{ background: c }} />)}
-                  <span className="text-xs ml-2" style={{ color: C.faint }}>{t.showcase.tabs[showcaseTab]}</span>
                 </div>
-                <AnimatePresence mode="wait">
-                  <motion.div key={showcaseTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.22 }}>
-                    {showcaseTab === 0 && <OrderPanelMockup />}
-                    {showcaseTab === 1 && <MenuMockup />}
-                    {showcaseTab === 2 && <LoyaltyMockup />}
-                  </motion.div>
-                </AnimatePresence>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <StampCardPreview filled={stampCount} />
+                </div>
               </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ LOYALTY CARD DESIGNER ═══════════════════════════════════════════ */}
-      <section className="py-24 relative" style={{ borderTop: `1px solid ${C.glassB}` }}>
-        <div className="orb w-96 h-96 top-1/2 -translate-y-1/2 left-0" style={{ background: 'rgba(0,119,182,0.1)' }} />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-3">
-              {lang === 'TR' ? 'Sadakat Kartınızı Tasarımlayın' : 'Design Your Loyalty Card'}
-            </motion.h2>
-            <motion.p variants={fadeUp} className="text-center mb-12" style={{ color: C.muted }}>
-              {lang === 'TR' ? 'Müşterilerinizin telefonuna eklenecek kartı şimdi özelleştirin' : 'Customize the card that will be added to your customers\' phones'}
-            </motion.p>
-            <div className="grid lg:grid-cols-2 gap-10 items-start">
-              {/* Controls */}
-              <motion.div variants={fadeUp} className="glass-card p-6 space-y-5">
-                {/* Renkler */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
-                    {lang === 'TR' ? 'Kart Arka Plan Rengi' : 'Card Background Color'}
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {CARD_COLORS_LP.map(c => (
-                      <button key={c} onClick={() => setCardBg(c)}
-                        className="w-8 h-8 rounded-lg border-2 transition-all"
-                        style={{ background: c, borderColor: cardBg === c ? '#00b4d8' : 'transparent' }} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
-                    {lang === 'TR' ? 'Metin Rengi' : 'Text Color'}
-                  </label>
-                  <div className="flex gap-2">
-                    {['#F5F0E8', '#FFFFFF', '#2C1810', '#000000'].map(c => (
-                      <button key={c} onClick={() => setCardTextColor(c)}
-                        className="w-8 h-8 rounded-lg border-2 transition-all"
-                        style={{ background: c, borderColor: cardTextColor === c ? '#00b4d8' : 'rgba(14,42,74,0.8)' }} />
-                    ))}
-                  </div>
-                </div>
-                {/* Şirket adı */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
-                    {lang === 'TR' ? 'Şirket Adı' : 'Company Name'}
-                  </label>
-                  <input
-                    value={cardCompany}
-                    onChange={e => setCardCompany(e.target.value)}
-                    placeholder={lang === 'TR' ? 'Kafe İstanbul' : 'Cafe Istanbul'}
-                    className="input-dark"
-                  />
-                </div>
-                {/* Pul ikonu */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
-                    {lang === 'TR' ? 'Pul İkonu' : 'Stamp Icon'}
-                  </label>
-                  <div className="flex gap-2">
-                    {STAMP_ICONS_LP.map(icon => (
-                      <button key={icon} onClick={() => setStampIcon(icon)}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition"
-                        style={{
-                          background: stampIcon === icon ? 'rgba(0,119,182,0.3)' : C.glass,
-                          border: stampIcon === icon ? '2px solid #00b4d8' : `1px solid ${C.glassB}`,
-                        }}>
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Pul sayısı */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
-                    {lang === 'TR' ? `Maksimum Pul: ${stampCount}` : `Max Stamps: ${stampCount}`}
-                  </label>
-                  <input type="range" min={3} max={10} value={stampCount} onChange={e => setStampCount(parseInt(e.target.value))}
-                    className="w-full accent-[#00b4d8]" />
-                  <div className="flex justify-between text-xs mt-1" style={{ color: C.muted }}>
-                    <span>3</span><span>10</span>
-                  </div>
-                </div>
-                {/* Ödül */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
-                    {lang === 'TR' ? 'Ödül Açıklaması' : 'Reward Description'}
-                  </label>
-                  <input value={reward} onChange={e => setReward(e.target.value)} className="input-dark" />
-                </div>
-              </motion.div>
-
-              {/* Card preview */}
-              <motion.div variants={fadeUp} className="flex flex-col items-center">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-5" style={{ color: C.muted }}>
-                  {lang === 'TR' ? 'Canlı Önizleme' : 'Live Preview'}
-                </p>
+        {/* ── PRICING ─────────────────────────────────────────────────────────── */}
+        <section id="fiyatlar" style={{ padding: '80px clamp(20px, 5vw, 64px)', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+            <div ref={pricingReveal.ref} className={`pg-reveal${pricingReveal.visible ? ' pg-visible' : ''}`} style={{ textAlign: 'center', marginBottom: 56 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Fiyatlandırma</div>
+              <h2 className="pg-display" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: pg.cream, marginBottom: 14 }}>
+                Şeffaf fiyat,<br />sürpriz yok
+              </h2>
+              <p style={{ color: pg.muted, fontSize: '1rem' }}>14 gün ücretsiz dene. Kredi kartı gerekmez.</p>
+            </div>
+            <div className="pg-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, alignItems: 'end', paddingBottom: 12 }}>
+              {PLANS.map((plan, i) => (
                 <div
+                  key={i}
+                  className={`pg-pricing-card pg-reveal${pricingReveal.visible ? ' pg-visible' : ''} pg-d${i + 1}${plan.highlight ? ' pg-highlight' : ''}`}
                   style={{
-                    width: '100%', maxWidth: 380,
-                    aspectRatio: '380/240',
-                    borderRadius: 20,
-                    background: cardBg,
-                    color: cardTextColor,
-                    padding: '24px 28px',
-                    boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
-                    position: 'relative',
-                    overflow: 'hidden',
+                    background: plan.highlight
+                      ? 'linear-gradient(135deg, rgba(200,136,40,0.2), rgba(200,136,40,0.08))'
+                      : (isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.75)'),
+                    border: plan.highlight ? `2px solid ${pg.amber}` : `1px solid ${pg.border}`,
+                    boxShadow: isLight
+                      ? (plan.highlight ? '0 24px 64px rgba(200,136,40,0.2)' : '0 4px 20px rgba(0,0,0,0.06)')
+                      : (plan.highlight ? '0 24px 64px rgba(200,136,40,0.25)' : '0 8px 32px rgba(0,0,0,0.3)'),
                   }}
                 >
-                  {/* Glassmorphism overlay */}
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 20 }} />
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    {/* Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>G</div>
-                      <span style={{ fontWeight: 700, fontSize: 15 }}>{cardCompany || (lang === 'TR' ? 'Kafe İstanbul' : 'Cafe Istanbul')}</span>
-                    </div>
-                    {/* Stamps */}
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {Array.from({ length: stampCount }).map((_, i) => (
-                        <span key={i} style={{ fontSize: 18, opacity: i < 3 ? 1 : 0.3 }}>
-                          {i < 3 ? stampIcon : '○'}
-                        </span>
-                      ))}
-                      <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4, alignSelf: 'center' }}>3/{stampCount}</span>
-                    </div>
-                    {/* Reward */}
-                    <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 12 }}>
-                      {lang === 'TR' ? 'Ödül: ' : 'Reward: '}{reward}
-                    </div>
-                    {/* Footer */}
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ fontSize: 9, opacity: 0.5 }}>{lang === 'TR' ? 'Üye Kodu' : 'Member Code'}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>AB3X7K</div>
-                      </div>
-                      <div style={{ fontSize: 9, opacity: 0.4 }}>by Garsonsal</div>
-                    </div>
-                  </div>
-                </div>
-                <Link href="/kayit" className="gradient-btn mt-6 text-sm px-8 py-3 rounded-xl inline-block">
-                  {lang === 'TR' ? 'Bu Tasarımla Başla →' : 'Start With This Design →'}
-                </Link>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ PRICING ══════════════════════════════════════════════════════════ */}
-      <section id="fiyatlandirma" className="py-24 relative">
-        <div className="orb w-96 h-96 top-1/2 -translate-y-1/2 right-0" style={{ background: 'rgba(0,59,94,0.3)' }} />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-3">{t.pricing.title}</motion.h2>
-            <motion.p variants={fadeUp} className="text-center mb-8" style={{ color: C.muted }}>{t.pricing.subtitle}</motion.p>
-            {/* Toggle */}
-            <motion.div variants={fadeUp} className="flex items-center justify-center gap-3 mb-12">
-              <span className="text-sm" style={{ color: billingYearly ? C.faint : '#fff' }}>{t.pricing.monthly}</span>
-              <button onClick={() => setBillingYearly(!billingYearly)}
-                className="relative w-12 h-6 rounded-full transition-colors"
-                style={{ background: billingYearly ? C.grad : 'rgba(255,255,255,0.12)' }}>
-                <div className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all" style={{ left: billingYearly ? '26px' : '4px' }} />
-              </button>
-              <span className="text-sm flex items-center gap-2" style={{ color: billingYearly ? '#fff' : C.faint }}>
-                {t.pricing.yearly}
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                  style={{ background: 'rgba(0,173,243,0.15)', color: C.c4, border: `1px solid rgba(0,173,243,0.3)` }}>
-                  {t.pricing.yearlyBadge}
-                </span>
-              </span>
-            </motion.div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {t.pricing.plans.map((plan, i) => (
-                <motion.div key={i} variants={fadeUp} className="glass-card p-8 flex flex-col relative"
-                  style={plan.popular ? { border: `1px solid rgba(0,173,243,0.4)`, boxShadow: `0 0 60px rgba(0,173,243,0.12), 0 8px 32px rgba(0,19,38,0.5)` } : {}}>
-                  {plan.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                      <span className="gradient-btn text-xs px-4 py-1 rounded-full">
-                        {lang === 'TR' ? '✨ En Popüler' : '✨ Most Popular'}
-                      </span>
-                    </div>
+                  {plan.highlight && (
+                    <div style={{
+                      position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+                      background: 'linear-gradient(135deg, #C88828, #E8A030)',
+                      color: '#0F0A05', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em',
+                      textTransform: 'uppercase', padding: '4px 14px', borderRadius: 100, whiteSpace: 'nowrap',
+                    }}>En Popüler</div>
                   )}
-                  <h3 className="font-bold text-white text-xl mb-2">{plan.name}</h3>
-                  <div className="mb-6">
-                    <span className="text-3xl font-extrabold" style={{ background: C.gradH, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', letterSpacing: '-0.02em' }}>
-                      {billingYearly ? plan.yearly : plan.monthly}
-                    </span>
+                  <div style={{ marginBottom: 6, fontSize: '0.75rem', fontWeight: 700, color: pg.amber, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{plan.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
+                    <span className="pg-display" style={{ fontSize: '3rem', color: pg.cream }}>₺{plan.price}</span>
+                    <span style={{ color: pg.muted, fontSize: '0.875rem' }}>{plan.period}</span>
                   </div>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {plan.features.map((f, fi) => (
-                      <li key={fi} className="flex items-start gap-2.5 text-sm" style={{ color: C.muted }}>
-                        <span className="mt-0.5 flex-shrink-0 font-bold" style={{ color: C.c4 }}>✓</span>{f}
+                  <p style={{ fontSize: '0.875rem', color: pg.muted, marginBottom: 20, lineHeight: 1.6 }}>{plan.desc}</p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {plan.features.map(f => (
+                      <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: pg.cream }}>
+                        <span style={{ color: pg.amber, fontWeight: 700, fontSize: '1rem', lineHeight: 1 }}>✓</span>
+                        {f}
                       </li>
                     ))}
                   </ul>
-                  <Link href="/kayit" className={`block text-center py-3 px-6 rounded-xl font-semibold text-sm ${plan.popular ? 'gradient-btn' : 'ghost-btn'}`}>
+                  <Link
+                    href="/giris"
+                    className={plan.highlight ? 'pg-btn-amber' : 'pg-btn-ghost'}
+                    style={{
+                      width: '100%', justifyContent: 'center', display: 'inline-flex',
+                      ...(plan.highlight ? {} : { color: pg.cream, border: `1px solid ${pg.border}` }),
+                    }}
+                  >
                     {plan.cta}
                   </Link>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ FAQ ══════════════════════════════════════════════════════════════ */}
-      <section id="sss" className="py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.h2 variants={fadeUp} className="section-title text-center mb-12">{t.faq.title}</motion.h2>
-            <div className="space-y-2.5">
-              {t.faq.items.map((item, i) => (
-                <motion.div key={i} variants={fadeUp} className="glass-card overflow-hidden">
-                  <button className="w-full flex items-center justify-between px-5 py-4 text-left"
-                    onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                    <span className="font-medium text-white text-sm pr-4">{item.q}</span>
-                    <motion.span animate={{ rotate: openFaq === i ? 45 : 0 }} transition={{ duration: 0.2 }}
-                      className="flex-shrink-0" style={{ color: C.c4 }}>
-                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                        <line x1="9" y1="3" x2="9" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        <line x1="3" y1="9" x2="15" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
-                    </motion.span>
-                  </button>
-                  <AnimatePresence>
-                    {openFaq === i && (
-                      <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
-                        <p className="px-5 pb-5 text-sm leading-relaxed" style={{ color: C.muted }}>{item.a}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ ABOUT ════════════════════════════════════════════════════════════ */}
-      <section id="hakkimizda" className="py-24" style={{ background: `linear-gradient(180deg, transparent, rgba(0,59,94,0.12), transparent)` }}>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <motion.div variants={fadeUp} className="glass-elevated p-12 text-center">
-              <h2 className="section-title mb-6">{t.about.title}</h2>
-              <p className="text-lg leading-relaxed mb-8" style={{ color: C.muted }}>{t.about.text}</p>
-              <Link href="/kayit" className="gradient-btn inline-block text-sm px-8 py-3 rounded-xl">{t.nav.trial} →</Link>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ CONTACT ══════════════════════════════════════════════════════════ */}
-      <section id="iletisim" className="py-24">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
-            <div className="grid md:grid-cols-2 gap-12 items-start">
-              <motion.div variants={fadeUp}>
-                <h2 className="section-title mb-4">{t.contact.title}</h2>
-                <p className="mb-8" style={{ color: C.muted }}>{t.contact.subtitle}</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: `rgba(0,110,163,0.2)`, border: `1px solid rgba(0,173,243,0.25)` }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.c4} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
-                    </svg>
-                  </div>
-                  <span className="text-sm text-white">hello@garsonsal.com</span>
                 </div>
-              </motion.div>
-              <motion.div variants={fadeUp}>
-                {contactSent ? (
-                  <div className="glass-card p-10 text-center">
-                    <div className="text-5xl mb-4">✅</div>
-                    <h3 className="font-bold text-white text-lg mb-2">{lang === 'TR' ? 'Mesajınız alındı!' : 'Message received!'}</h3>
-                    <p className="text-sm" style={{ color: C.muted }}>{lang === 'TR' ? '24 saat içinde geri döneceğiz.' : "We'll get back to you within 24 hours."}</p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ─────────────────────────────────────────────────────────────── */}
+        <section id="sss" style={{ padding: '80px clamp(20px, 5vw, 64px)', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 780, margin: '0 auto' }}>
+            <div ref={faqReveal.ref} className={`pg-reveal${faqReveal.visible ? ' pg-visible' : ''}`} style={{ textAlign: 'center', marginBottom: 48 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>SSS</div>
+              <h2 className="pg-display" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', color: pg.cream }}>Sık sorulan sorular</h2>
+            </div>
+            <div className={`pg-reveal${faqReveal.visible ? ' pg-visible' : ''}`}>
+              {FAQS.map((faq, i) => (
+                <div key={i} className="pg-faq-item" style={{ borderColor: pg.border }}>
+                  <button className="pg-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ color: pg.cream }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9375rem', textAlign: 'left' }}>{faq.q}</span>
+                    <span className={`pg-chevron${openFaq === i ? ' open' : ''}`} style={{ color: pg.amber, fontSize: '1.25rem', lineHeight: 1 }}>+</span>
+                  </button>
+                  <div className={`pg-faq-body${openFaq === i ? ' open' : ' closed'}`}>
+                    <p style={{ paddingBottom: 20, color: pg.muted, fontSize: '0.9rem', lineHeight: 1.75 }}>{faq.a}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CONTACT ─────────────────────────────────────────────────────────── */}
+        <section id="iletisim" style={{ padding: '80px clamp(20px, 5vw, 64px)', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+            <div className="pg-contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'start' }}>
+              <div ref={contactReveal.ref} className={`pg-reveal${contactReveal.visible ? ' pg-visible' : ''}`}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>İletişim</div>
+                <h2 className="pg-display" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', color: pg.cream, marginBottom: 16 }}>
+                  Soruların mı var?<br />Yazalım.
+                </h2>
+                <p style={{ color: pg.muted, lineHeight: 1.7, marginBottom: 32 }}>
+                  Demo için randevu al, fiyatlar hakkında konuşalım ya da sadece merhaba de.
+                  Ekibimiz en geç 1 iş günü içinde döner.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {[
+                    { icon: '📧', label: 'E-posta', val: 'merhaba@garsonsal.app' },
+                    { icon: '📍', label: 'Konum', val: 'İstanbul, Türkiye' },
+                    { icon: '⏰', label: 'Yanıt süresi', val: 'Genellikle birkaç saat içinde' },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12,
+                        background: 'rgba(200,136,40,0.1)', border: `1px solid ${pg.border}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+                      }}>{item.icon}</div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: pg.muted, marginBottom: 2 }}>{item.label}</div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: pg.cream }}>{item.val}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`pg-reveal${contactReveal.visible ? ' pg-visible' : ''} pg-d2`} style={{
+                borderRadius: 24,
+                background: isLight ? 'rgba(255,253,247,0.9)' : 'rgba(26,15,5,0.75)',
+                border: `1px solid ${pg.border}`,
+                padding: 32,
+                boxShadow: isLight ? '0 4px 24px rgba(0,0,0,0.06)' : '0 8px 32px rgba(0,0,0,0.3)',
+              }}>
+                {sent ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: pg.cream, marginBottom: 8 }}>Mesajın ulaştı!</div>
+                    <div style={{ color: pg.muted }}>En kısa sürede geri döneceğiz.</div>
                   </div>
                 ) : (
-                  <form onSubmit={(e) => { e.preventDefault(); setContactSent(true) }} className="glass-card p-6 space-y-4">
-                    {[{ name: 'name', label: t.contact.name, type: 'text' }, { name: 'email', label: t.contact.email, type: 'email' }, { name: 'business', label: t.contact.business, type: 'text' }].map(f => (
-                      <div key={f.name}>
-                        <label className="block text-xs font-medium mb-1.5" style={{ color: C.muted }}>{f.label}</label>
-                        <input name={f.name} type={f.type} required className="input-dark" />
+                  <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: pg.muted, marginBottom: 6 }}>Ad Soyad</label>
+                        <input className="input-dark" placeholder="Ahmet Yılmaz" value={contact.name} onChange={e => setContact(p => ({ ...p, name: e.target.value }))} required />
                       </div>
-                    ))}
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color: C.muted }}>{t.contact.message}</label>
-                      <textarea name="message" required rows={4} className="input-dark resize-none" />
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: pg.muted, marginBottom: 6 }}>Telefon</label>
+                        <input className="input-dark" placeholder="0532 000 00 00" value={contact.phone} onChange={e => setContact(p => ({ ...p, phone: e.target.value }))} />
+                      </div>
                     </div>
-                    <button type="submit" className="gradient-btn w-full py-3 rounded-xl text-sm">{t.contact.send}</button>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: pg.muted, marginBottom: 6 }}>E-posta</label>
+                      <input className="input-dark" type="email" placeholder="ahmet@kafem.com" value={contact.email} onChange={e => setContact(p => ({ ...p, email: e.target.value }))} required />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: pg.muted, marginBottom: 6 }}>Mesajın</label>
+                      <textarea className="input-dark" placeholder="Merhaba, Garsonsal hakkında bilgi almak istiyorum..." value={contact.msg} onChange={e => setContact(p => ({ ...p, msg: e.target.value }))} rows={4} required style={{ resize: 'none' }} />
+                    </div>
+                    <button type="submit" className="pg-btn-amber" style={{ width: '100%', justifyContent: 'center' }}>
+                      Gönder →
+                    </button>
                   </form>
                 )}
-              </motion.div>
+              </div>
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* ═══ FOOTER ═══════════════════════════════════════════════════════════ */}
-      <footer style={{ background: `rgba(0,59,94,0.2)`, borderTop: `1px solid ${C.glassB}` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-            <div>
-              <Logo variant="footer" />
-              <p className="text-sm mt-4 leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.footer.desc}</p>
-              <div className="flex gap-2.5 mt-5">
-                {['T', 'I', 'L'].map(s => (
-                  <div key={s} className="ghost-btn w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer" style={{ color: 'rgba(255,255,255,0.4)' }}>{s}</div>
+        {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
+        <footer style={{
+          padding: '48px clamp(20px, 5vw, 64px) 32px',
+          borderTop: `1px solid ${pg.border}`,
+          position: 'relative', zIndex: 1,
+        }}>
+          <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+            <div className="pg-footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 48 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <span style={{ fontSize: 22 }}>☕</span>
+                  <span className="pg-display" style={{
+                    fontSize: '1.3rem',
+                    background: 'linear-gradient(135deg, #C88828, #E8A030)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                  }}>Garsonsal</span>
+                </div>
+                <p style={{ fontSize: '0.875rem', color: pg.muted, lineHeight: 1.7, maxWidth: 280 }}>
+                  Türkiye&apos;nin kafeleri için dijital menü, QR sipariş ve sadakat platformu.
+                </p>
+              </div>
+              {[
+                { title: 'Ürün', links: ['Özellikler', 'Fiyatlar', 'Güvenlik', 'Güncellemeler'] },
+                { title: 'Şirket', links: ['Hakkımızda', 'Blog', 'Kariyer', 'İletişim'] },
+              ].map(col => (
+                <div key={col.title}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>{col.title}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {col.links.map(l => (
+                      <a key={l} href="#" style={{ fontSize: '0.875rem', color: pg.muted, textDecoration: 'none', transition: 'color 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = pg.cream)}
+                        onMouseLeave={e => (e.currentTarget.style.color = pg.muted)}
+                      >{l}</a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: pg.amber, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>Hukuki</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { label: 'Gizlilik Politikası', href: '/gizlilik-politikasi' },
+                    { label: 'Kullanım Koşulları', href: '/kullanim-kosullari' },
+                    { label: 'Çerez Politikası', href: '/cerez-politikasi' },
+                    { label: 'KVKK', href: '#' },
+                  ].map(l => (
+                    <Link key={l.label} href={l.href} style={{ fontSize: '0.875rem', color: pg.muted, textDecoration: 'none', transition: 'color 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = pg.cream)}
+                      onMouseLeave={e => (e.currentTarget.style.color = pg.muted)}
+                    >{l.label}</Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              paddingTop: 24, borderTop: `1px solid ${pg.border}`, flexWrap: 'wrap', gap: 12,
+            }}>
+              <div style={{ fontSize: '0.8rem', color: pg.muted }}>© 2025 Garsonsal Teknoloji A.Ş. Tüm hakları saklıdır.</div>
+              <div style={{ display: 'flex', gap: 20 }}>
+                {['Twitter', 'LinkedIn', 'Instagram'].map(s => (
+                  <a key={s} href="#" style={{ fontSize: '0.8rem', color: pg.muted, textDecoration: 'none', transition: 'color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = pg.amber)}
+                    onMouseLeave={e => (e.currentTarget.style.color = pg.muted)}
+                  >{s}</a>
                 ))}
               </div>
             </div>
-            {[
-              { title: t.footer.product, links: t.footer.productLinks },
-              { title: t.footer.company, links: t.footer.companyLinks },
-            ].map(col => (
-              <div key={col.title}>
-                <h4 className="font-semibold text-white text-sm mb-4">{col.title}</h4>
-                <ul className="space-y-2.5">
-                  {col.links.map(l => <li key={l}><a href="#" className="nav-link text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{l}</a></li>)}
-                </ul>
-              </div>
-            ))}
-            <div>
-              <h4 className="font-semibold text-white text-sm mb-4">{t.footer.legal}</h4>
-              <ul className="space-y-2.5">
-                {t.footer.legalLinks.map((l, i) => {
-                  const href = i === 0 ? '#' : i === 1 ? '/gizlilik-politikasi' : i === 2 ? '/kullanim-kosullari' : '/cerez-politikasi'
-                  return (
-                    <li key={l}>
-                      {i === 0
-                        ? <button onClick={() => setPolicyOpen(true)} className="text-sm hover:underline transition-colors text-left" style={{ color: C.c4 }}>{l}</button>
-                        : <Link href={href} className="nav-link text-sm hover:underline" style={{ color: 'rgba(255,255,255,0.4)' }}>{l}</Link>
-                      }
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between pt-8 gap-4" style={{ borderTop: `1px solid ${C.glassB}` }}>
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>{t.footer.copy}</p>
-            <button onClick={() => setLang(lang === 'TR' ? 'EN' : 'TR')}
-              className="ghost-btn text-xs px-3 py-1.5 rounded-lg font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              {lang === 'TR' ? '🇺🇸 Switch to English' : '🇹🇷 Türkçeye Geç'}
-            </button>
-          </div>
-        </div>
-      </footer>
-
-      {/* ═══ POLICY MODAL ═════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {policyOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,10,20,0.8)', backdropFilter: 'blur(8px)' }}
-            onClick={() => setPolicyOpen(false)}>
-            <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
-              className="glass-elevated p-8 max-w-lg w-full relative" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setPolicyOpen(false)}
-                className="absolute top-4 right-4 ghost-btn w-8 h-8 rounded-lg flex items-center justify-center text-sm" style={{ color: C.muted }}>
-                ✕
-              </button>
-              <h3 className="font-bold text-white text-lg mb-4">{lang === 'TR' ? 'Hizmet Kesintisi & İade Politikası' : 'Service & Refund Policy'}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: C.muted }}>{t.footer.policy}</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        </footer>
+      </div>
+    </>
   )
 }
