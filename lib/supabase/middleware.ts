@@ -30,9 +30,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Panel rotaları — auth gerekli
+  // Panel rotaları — auth veya superadmin impersonation gerekli
+  const impersonateId = request.cookies.get('sa_impersonate')?.value
+  const saToken = request.cookies.get('sa_session')?.value
+  const isImpersonating = !!(impersonateId && saToken === (process.env.SUPERADMIN_SECRET ?? 'change-me'))
+
   if (
-    !user &&
+    !user && !isImpersonating &&
     request.nextUrl.pathname.startsWith('/panel')
   ) {
     const url = request.nextUrl.clone()
