@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Caffe — Kafe & Restoran Yönetim Sistemi",
+  title: "Garsonsal — Kafe & Restoran Yönetim Sistemi",
   description: "QR tabanlı sipariş, garson çağırma ve dijital sadakat kartı sistemi",
   icons: {
     icon: "/icon.svg",
@@ -15,9 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr">
+    <html lang="tr" suppressHydrationWarning>
       <body className="antialiased">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

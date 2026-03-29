@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import Link from 'next/link'
 import Logo from '@/components/Logo'
+import { useTheme } from '@/components/ThemeProvider'
 
 // ─── Color tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -247,6 +248,16 @@ export default function LandingPage() {
   const [showcaseTab, setShowcaseTab] = useState(0)
   const [policyOpen, setPolicyOpen] = useState(false)
   const [contactSent, setContactSent] = useState(false)
+  const { theme, toggle: toggleTheme } = useTheme()
+  // Loyalty card designer state
+  const [cardBg, setCardBg] = useState('#2C3E6B')
+  const [cardTextColor, setCardTextColor] = useState('#F5F0E8')
+  const [cardCompany, setCardCompany] = useState('')
+  const [stampIcon, setStampIcon] = useState('☕')
+  const [stampCount, setStampCount] = useState(7)
+  const [reward, setReward] = useState(lang === 'TR' ? '1 Bedava Kahve' : '1 Free Coffee')
+  const CARD_COLORS_LP = ['#2C3E6B', '#4A2C2A', '#C17F4A', '#4A7C59', '#2C2C2C', '#6B2737', '#5B4B8A', '#2A6B6B']
+  const STAMP_ICONS_LP = ['☕', '⭐', '❤️', '👑', '💎']
 
   const t = content[lang]
   const navLinks = [
@@ -258,11 +269,11 @@ export default function LandingPage() {
   ]
 
   return (
-    <div style={{ background: C.c1, minHeight: '100vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
 
       {/* ═══ NAVBAR ═══════════════════════════════════════════════════════════ */}
       <nav className="fixed top-0 left-0 right-0 z-50"
-        style={{ backdropFilter: 'blur(20px)', background: 'rgba(0,19,38,0.88)', borderBottom: `1px solid ${C.glassB}` }}>
+        style={{ backdropFilter: 'blur(20px)', background: 'var(--color-nav-bg)', borderBottom: `1px solid ${C.glassB}` }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <a href="#"><Logo variant="navbar" /></a>
@@ -279,6 +290,12 @@ export default function LandingPage() {
               <button onClick={() => setLang(lang === 'TR' ? 'EN' : 'TR')}
                 className="ghost-btn text-xs px-3 py-1.5 rounded-lg font-medium cursor-pointer">
                 {lang === 'TR' ? '🇺🇸 EN' : '🇹🇷 TR'}
+              </button>
+              <button onClick={toggleTheme} className="theme-toggle" title={theme === 'dark' ? 'Açık Mod' : 'Koyu Mod'}>
+                {theme === 'dark'
+                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                }
               </button>
               <Link href="/giris" className="ghost-btn text-sm px-4 py-2 rounded-xl font-medium">{t.nav.login}</Link>
               <Link href="/kayit" className="gradient-btn text-sm px-4 py-2 rounded-xl">{t.nav.trial}</Link>
@@ -512,6 +529,153 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ═══ LOYALTY CARD DESIGNER ═══════════════════════════════════════════ */}
+      <section className="py-24 relative" style={{ borderTop: `1px solid ${C.glassB}` }}>
+        <div className="orb w-96 h-96 top-1/2 -translate-y-1/2 left-0" style={{ background: 'rgba(0,119,182,0.1)' }} />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={stagger}>
+            <motion.h2 variants={fadeUp} className="section-title text-center mb-3">
+              {lang === 'TR' ? 'Sadakat Kartınızı Tasarımlayın' : 'Design Your Loyalty Card'}
+            </motion.h2>
+            <motion.p variants={fadeUp} className="text-center mb-12" style={{ color: C.muted }}>
+              {lang === 'TR' ? 'Müşterilerinizin telefonuna eklenecek kartı şimdi özelleştirin' : 'Customize the card that will be added to your customers\' phones'}
+            </motion.p>
+            <div className="grid lg:grid-cols-2 gap-10 items-start">
+              {/* Controls */}
+              <motion.div variants={fadeUp} className="glass-card p-6 space-y-5">
+                {/* Renkler */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
+                    {lang === 'TR' ? 'Kart Arka Plan Rengi' : 'Card Background Color'}
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {CARD_COLORS_LP.map(c => (
+                      <button key={c} onClick={() => setCardBg(c)}
+                        className="w-8 h-8 rounded-lg border-2 transition-all"
+                        style={{ background: c, borderColor: cardBg === c ? '#00b4d8' : 'transparent' }} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
+                    {lang === 'TR' ? 'Metin Rengi' : 'Text Color'}
+                  </label>
+                  <div className="flex gap-2">
+                    {['#F5F0E8', '#FFFFFF', '#2C1810', '#000000'].map(c => (
+                      <button key={c} onClick={() => setCardTextColor(c)}
+                        className="w-8 h-8 rounded-lg border-2 transition-all"
+                        style={{ background: c, borderColor: cardTextColor === c ? '#00b4d8' : 'rgba(14,42,74,0.8)' }} />
+                    ))}
+                  </div>
+                </div>
+                {/* Şirket adı */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
+                    {lang === 'TR' ? 'Şirket Adı' : 'Company Name'}
+                  </label>
+                  <input
+                    value={cardCompany}
+                    onChange={e => setCardCompany(e.target.value)}
+                    placeholder={lang === 'TR' ? 'Kafe İstanbul' : 'Cafe Istanbul'}
+                    className="input-dark"
+                  />
+                </div>
+                {/* Pul ikonu */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
+                    {lang === 'TR' ? 'Pul İkonu' : 'Stamp Icon'}
+                  </label>
+                  <div className="flex gap-2">
+                    {STAMP_ICONS_LP.map(icon => (
+                      <button key={icon} onClick={() => setStampIcon(icon)}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition"
+                        style={{
+                          background: stampIcon === icon ? 'rgba(0,119,182,0.3)' : C.glass,
+                          border: stampIcon === icon ? '2px solid #00b4d8' : `1px solid ${C.glassB}`,
+                        }}>
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Pul sayısı */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
+                    {lang === 'TR' ? `Maksimum Pul: ${stampCount}` : `Max Stamps: ${stampCount}`}
+                  </label>
+                  <input type="range" min={3} max={10} value={stampCount} onChange={e => setStampCount(parseInt(e.target.value))}
+                    className="w-full accent-[#00b4d8]" />
+                  <div className="flex justify-between text-xs mt-1" style={{ color: C.muted }}>
+                    <span>3</span><span>10</span>
+                  </div>
+                </div>
+                {/* Ödül */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: C.muted }}>
+                    {lang === 'TR' ? 'Ödül Açıklaması' : 'Reward Description'}
+                  </label>
+                  <input value={reward} onChange={e => setReward(e.target.value)} className="input-dark" />
+                </div>
+              </motion.div>
+
+              {/* Card preview */}
+              <motion.div variants={fadeUp} className="flex flex-col items-center">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-5" style={{ color: C.muted }}>
+                  {lang === 'TR' ? 'Canlı Önizleme' : 'Live Preview'}
+                </p>
+                <div
+                  style={{
+                    width: '100%', maxWidth: 380,
+                    aspectRatio: '380/240',
+                    borderRadius: 20,
+                    background: cardBg,
+                    color: cardTextColor,
+                    padding: '24px 28px',
+                    boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Glassmorphism overlay */}
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)', borderRadius: 20 }} />
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>G</div>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>{cardCompany || (lang === 'TR' ? 'Kafe İstanbul' : 'Cafe Istanbul')}</span>
+                    </div>
+                    {/* Stamps */}
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {Array.from({ length: stampCount }).map((_, i) => (
+                        <span key={i} style={{ fontSize: 18, opacity: i < 3 ? 1 : 0.3 }}>
+                          {i < 3 ? stampIcon : '○'}
+                        </span>
+                      ))}
+                      <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4, alignSelf: 'center' }}>3/{stampCount}</span>
+                    </div>
+                    {/* Reward */}
+                    <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 12 }}>
+                      {lang === 'TR' ? 'Ödül: ' : 'Reward: '}{reward}
+                    </div>
+                    {/* Footer */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: 9, opacity: 0.5 }}>{lang === 'TR' ? 'Üye Kodu' : 'Member Code'}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>AB3X7K</div>
+                      </div>
+                      <div style={{ fontSize: 9, opacity: 0.4 }}>by Garsonsal</div>
+                    </div>
+                  </div>
+                </div>
+                <Link href="/kayit" className="gradient-btn mt-6 text-sm px-8 py-3 rounded-xl inline-block">
+                  {lang === 'TR' ? 'Bu Tasarımla Başla →' : 'Start With This Design →'}
+                </Link>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ═══ PRICING ══════════════════════════════════════════════════════════ */}
       <section id="fiyatlandirma" className="py-24 relative">
         <div className="orb w-96 h-96 top-1/2 -translate-y-1/2 right-0" style={{ background: 'rgba(0,59,94,0.3)' }} />
@@ -688,14 +852,17 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold text-white text-sm mb-4">{t.footer.legal}</h4>
               <ul className="space-y-2.5">
-                {t.footer.legalLinks.map((l, i) => (
-                  <li key={l}>
-                    {i === 0
-                      ? <button onClick={() => setPolicyOpen(true)} className="text-sm hover:underline transition-colors text-left" style={{ color: C.c4 }}>{l}</button>
-                      : <a href="#" className="nav-link text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{l}</a>
-                    }
-                  </li>
-                ))}
+                {t.footer.legalLinks.map((l, i) => {
+                  const href = i === 0 ? '#' : i === 1 ? '/gizlilik-politikasi' : i === 2 ? '/kullanim-kosullari' : '/cerez-politikasi'
+                  return (
+                    <li key={l}>
+                      {i === 0
+                        ? <button onClick={() => setPolicyOpen(true)} className="text-sm hover:underline transition-colors text-left" style={{ color: C.c4 }}>{l}</button>
+                        : <Link href={href} className="nav-link text-sm hover:underline" style={{ color: 'rgba(255,255,255,0.4)' }}>{l}</Link>
+                      }
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           </div>

@@ -5,7 +5,6 @@ import { isSuperAdmin } from '@/lib/auth/superadmin'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/panel/Sidebar'
 import ImpersonationBanner from '@/components/panel/ImpersonationBanner'
-import ThemeProvider from '@/components/ThemeProvider'
 import ThemeToggle from '@/components/ThemeToggle'
 import type { Business } from '@/lib/supabase/types'
 
@@ -39,19 +38,17 @@ export default async function DashboardLayout({
   if (!business) redirect('/giris')
 
   return (
-    <ThemeProvider>
-      <div className="flex min-h-screen" style={{ background: 'var(--color-layout-gradient)' }}>
-        <Sidebar businessName={business.name} />
-        <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--color-panel-bg)' }}>
-          {isImpersonating && <ImpersonationBanner businessName={business.name} />}
-          <header className="panel-topbar">
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
-        </div>
+    <div className="flex min-h-screen" style={{ background: 'var(--color-layout-gradient)' }}>
+      <Sidebar businessName={business.name} />
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--color-panel-bg)' }}>
+        {isImpersonating && <ImpersonationBanner businessName={business.name} />}
+        <header className="panel-topbar">
+          <ThemeToggle />
+        </header>
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
       </div>
-    </ThemeProvider>
+    </div>
   )
 }

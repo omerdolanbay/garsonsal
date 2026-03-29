@@ -25,7 +25,7 @@ export default function Logo({
       width={h * 4}
       height={h}
       style={{ height: h, width: 'auto' }}
-      className={className}
+      className={`logo-adaptive${className ? ` ${className}` : ''}`}
       priority
     />
   )
