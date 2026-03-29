@@ -191,7 +191,7 @@ export default function MenuClient({
 
 function ItemRow({
   item,
-  categories: _categories,
+  categories: _categories, // eslint-disable-line @typescript-eslint/no-unused-vars
   onEdit,
   onToggle,
   onDelete,
