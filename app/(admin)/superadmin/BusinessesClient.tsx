@@ -39,8 +39,11 @@ export default function BusinessesClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ businessId }),
     })
-    if (res.ok) window.open('/panel/orders', '_blank')
-    setImpersonating(null)
+    if (res.ok) {
+      window.location.href = '/panel/orders'
+    } else {
+      setImpersonating(null)
+    }
   }
 
   async function handleToggleStatus(business: Business) {

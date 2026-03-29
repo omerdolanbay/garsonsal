@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isSuperAdmin } from '@/lib/auth/superadmin'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 export async function POST(req: NextRequest) {
   if (!(await isSuperAdmin())) {
@@ -10,22 +11,21 @@ export async function POST(req: NextRequest) {
   const { businessId } = await req.json()
   const supabase = createServiceRoleClient()
 
-  // İşletmenin e-postasını bul
   const { data: business } = await supabase
     .from('businesses')
-    .select('email')
+    .select('id')
     .eq('id', businessId)
     .single()
 
   if (!business) return NextResponse.json({ error: 'İşletme bulunamadı' }, { status: 404 })
 
-  // Magic link ile şifresiz giriş linki üret
-  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-    type: 'magiclink',
-    email: business.email,
+  const cookieStore = cookies()
+  cookieStore.set('sa_impersonate', businessId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 8,
+    path: '/',
   })
 
-  if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
-
-  return NextResponse.json({ url: linkData.properties?.action_link })
+  return NextResponse.json({ ok: true })
 }

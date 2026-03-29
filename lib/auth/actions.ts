@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 // Slugify yardımcısı
 function slugify(text: string): string {
@@ -82,6 +83,13 @@ export async function getSession() {
 }
 
 export async function getUser() {
+  const cookieStore = cookies()
+  const impersonateId = cookieStore.get('sa_impersonate')?.value
+  const saToken = cookieStore.get('sa_session')?.value
+  if (impersonateId && saToken === (process.env.SUPERADMIN_SECRET ?? 'change-me')) {
+    return { id: impersonateId } as { id: string }
+  }
+
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user
